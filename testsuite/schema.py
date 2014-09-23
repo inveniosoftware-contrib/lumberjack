@@ -26,12 +26,15 @@ import logging
 import elasticsearch
 import sys
 import time
+from random import randint
 
 from .common import HOSTS, INDEX_PREFIX, ES_LOGLEVEL
 
 class SchemaTestCase(unittest.TestCase):
     def setUp(self):
-        self.esl = eslog.ESLog(hosts=HOSTS, index_prefix=INDEX_PREFIX)
+        self.index_infix = str(randint(0, 2**30)) + '-'
+        self.esl = eslog.ESLog(hosts=HOSTS,
+                               index_prefix=INDEX_PREFIX + self.index_infix)
         self.es = self.esl.context.elasticsearch
         
         l = logging.getLogger('elasticsearch')
@@ -40,7 +43,7 @@ class SchemaTestCase(unittest.TestCase):
 
     def tearDown(self):
         self.esl.context.elasticsearch.indices.delete(
-            index=INDEX_PREFIX + '*')
+            index=INDEX_PREFIX + self.index_infix + '*')
 
     def test_register_schema(self):
         schema = {
@@ -64,8 +67,13 @@ class SchemaTestCase(unittest.TestCase):
         self.esl.register_schema('a_type', schema)
 
         # Test it's now in ES.
-        res = self.es.get_template(id=INDEX_PREFIX + '*')
-        assert res['mappings']['a_type'] == schema
+        res = self.es.indices.get_template(
+            name=INDEX_PREFIX + self.index_infix + '*')
+
+        expected_schema = self.esl.context._build_mappings()['a_type']
+                
+        assert res[INDEX_PREFIX + self.index_infix + '*'] \
+            ['mappings']['a_type'] == expected_schema
 
 def suite():
     suite = unittest.makeSuite(SchemaTestCase, 'test')

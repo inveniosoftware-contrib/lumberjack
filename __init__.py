@@ -69,6 +69,9 @@ class ESLog(object):
                                        suffix_format=suffix_format)
         return handler
 
+    def register_schema(self, logger, schema):
+        self.context.register_schema(logger, schema)
+
 def reset_everything(loggername = 'test',
                      hosts = [{'host': 'localhost', 'port': 9199}],
                      index_prefix = 'eslog-test-'):

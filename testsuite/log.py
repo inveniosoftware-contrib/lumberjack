@@ -26,6 +26,7 @@ import logging
 import elasticsearch
 import sys
 import time
+from random import randint
 
 from .common import HOSTS, INDEX_PREFIX, ES_LOGLEVEL
 
@@ -34,7 +35,10 @@ LOGGER_CHILD_NAME = 'test.child'
 
 class LogTestCase(unittest.TestCase):
     def setUp(self):
-        self.esl = eslog.ESLog(hosts=HOSTS, index_prefix=INDEX_PREFIX)
+        self.index_infix = str(randint(0,2**30)) + '-'
+        
+        self.esl = eslog.ESLog(hosts=HOSTS,
+                               index_prefix=INDEX_PREFIX + self.index_infix)
         self.es = self.esl.context.elasticsearch
         
         self.logger = logging.getLogger(LOGGER_NAME)
@@ -50,7 +54,7 @@ class LogTestCase(unittest.TestCase):
     def tearDown(self):
         self.logger.handlers = []
         self.esl.context.elasticsearch.indices.delete(
-            index=INDEX_PREFIX + '*')
+            index=INDEX_PREFIX + self.index_infix + '*')
 
     def test_log_not_dynamic(self):
         schema = {
@@ -77,14 +81,15 @@ class LogTestCase(unittest.TestCase):
             'a': 'mice rice right across the page',
             'b': 24
         })
-        res = self.es.search(index=INDEX_PREFIX + '*', doc_type=LOGGER_NAME,
-                             body={
-                                'query': {
-                                    'terms': {
-                                        'a': 'rice'
-                                    }
-                                }
-                            })
+        res = self.es.search(
+            index=INDEX_PREFIX + self.index_infix + '*', doc_type=LOGGER_NAME,
+            body={
+                'query': {
+                    'terms': {
+                        'a': 'rice'
+                    }
+                }
+            })
         assert res['hits']['total'] == 1
     
     def test_log_dynamic(self):
@@ -102,14 +107,15 @@ class LogTestCase(unittest.TestCase):
             musts.append({'match': {k: v}})
         musts.append({'match': {'level': level}})
         
-        res = self.es.search(index=INDEX_PREFIX + '*', doc_type=LOGGER_NAME,
-                             body={
-                                'query': {
-                                    'bool': {
-                                        'must': musts
-                                    }
-                                }
-                            })
+        res = self.es.search(
+            index=INDEX_PREFIX + self.index_infix + '*', doc_type=LOGGER_NAME,
+            body={
+                'query': {
+                    'bool': {
+                        'must': musts
+                    }
+                }
+            })
         assert res['hits']['total'] == 1
 
 def suite():

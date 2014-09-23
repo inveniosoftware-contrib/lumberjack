@@ -92,7 +92,7 @@ class ElasticsearchContext(object):
         self.max_queue_length = max_queue_length
 
     ## TODO: move this to ESLog
-    def register_schema(self, schema, logger='default'):
+    def register_schema(self, logger, schema):
         self.schemas[logger] = schema
         self._update_index_templates()
 
@@ -176,7 +176,7 @@ class ElasticsearchContext(object):
                     expanded_properties[field_name].update(field_info)
 
                 # Put the expanded properties into the mapping for this type.
-                this_mapping.properties.update(expanded_properties)
+                this_mapping['properties'].update(expanded_properties)
                 # Delete the pre-processed properties so they don't overwrite
                 # the processed ones later.
                 working_schema = schema.copy()
