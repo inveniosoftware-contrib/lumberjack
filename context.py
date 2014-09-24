@@ -33,7 +33,6 @@ DEFAULT_BASE_MAPPING = {
         },
         '@timestamp': {
             'type': 'date',
-            'format': 'dateOptionalTime'
         },
         'level': {
             'type': 'integer'
@@ -111,10 +110,10 @@ class ElasticsearchContext(object):
 
         ## TODO: move this into ES itself
         if doc_type not in self.schemas:
-            self.register_schema({
+            self.register_schema(doc_type, {
                 ## TODO: fix this
                 'dynamic': 'default'
-            }, doc_type)
+            })
 
         if self.max_queue_length is not None and \
             len(self.queue) >= self.max_queue_length:
@@ -160,49 +159,32 @@ class ElasticsearchContext(object):
         mappings = {}
         for (type_name, schema) in self.schemas.items():
             this_mapping = self.default_base_mapping.copy()
+            working_schema = schema.copy()
 
-            # Expand the fields in schema['properties'] based on their type.
-            if 'properties' in schema:
-                expanded_properties = {}
-                for (field_name, field_info) in schema['properties'].items():
-                    expanded_properties[field_name] = {}
-
-                    if ('type' in field_info and
-                            field_info['type'] in
-                            self.default_types_properties):
-                        expanded_properties[field_name].update(
-                            self.default_types_properties[field_info['type']])
-
-                    expanded_properties[field_name].update(field_info)
-
-                # Put the expanded properties into the mapping for this type.
-                this_mapping['properties'].update(expanded_properties)
-                # Delete the pre-processed properties so they don't overwrite
-                # the processed ones later.
-                working_schema = schema.copy()
+            # Combine the unprocessed properties into this_mapping.
+            if 'properties' in working_schema:
+                this_mapping['properties'].update(schema['properties'])
+                # So we don't overwrite this_mapping['properties'] later
                 del working_schema['properties']
+
+            # Expand the fields in this_mapping['properties'] based on type.
+            expanded_properties = {}
+            for (field_name, field_info) in this_mapping['properties'].items():
+                expanded_properties[field_name] = {}
+
+                if ('type' in field_info and
+                        field_info['type'] in
+                        self.default_types_properties):
+                    expanded_properties[field_name].update(
+                        self.default_types_properties[field_info['type']])
+
+                expanded_properties[field_name].update(field_info)
+
+            # Put the expanded properties into the mapping for this type.
+            this_mapping['properties'] = expanded_properties
 
             # Overwrite the defaults where applicable.
             this_mapping.update(working_schema)
 
             mappings[type_name] = this_mapping
-            
-            """
-            this_mapping = self.default_base_mapping.copy()
-
-            this_properties = this_mapping['properties']
-            if 'properties' in schema:
-                for (field_name, field_info) in schema['properties'].items():
-                    if field_name not in this_mapping:
-                        this_properties[field_name] = {}
-
-                    if 'type' in field_info and \
-                    field_info['type'] in self.default_types_properties:
-                        this_properties[field_name].update(
-                            self.default_types_properties[field_info['type']]
-                        )
-                    this_properties[field_name].update(field_info)
-            this_mapping['properties'].update(this_properties)
-            mappings[type_name] = this_mapping
-            """
         return mappings
