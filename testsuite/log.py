@@ -63,6 +63,7 @@ class LogTestCase(unittest.TestCase):
             'properties': {
                 'a': {
                     'type': 'string',
+                    'index': 'analyzed',
                     'fields': {
                         'raw': {
                             'index': 'not_analyzed',
@@ -85,7 +86,7 @@ class LogTestCase(unittest.TestCase):
             index=INDEX_PREFIX + self.index_infix + '*', doc_type=LOGGER_NAME,
             body={
                 'query': {
-                    'terms': {
+                    'match': {
                         'a': 'rice'
                     }
                 }
