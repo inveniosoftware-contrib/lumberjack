@@ -70,11 +70,14 @@ class ESLog(object):
         return handler
 
     def register_schema(self, logger, schema):
+        u"""Wrapper for self.context.register_schema."""
         self.context.register_schema(logger, schema)
 
 def reset_everything(loggername = 'test',
                      hosts = [{'host': 'localhost', 'port': 9199}],
                      index_prefix = 'eslog-test-'):
+
+    u"""Useful function to reset a debugging environment."""
     import sys
     from . import context
 

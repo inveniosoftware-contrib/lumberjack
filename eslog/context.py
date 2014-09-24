@@ -17,6 +17,8 @@
 ## along with Invenio; if not, write to the Free Software Foundation, Inc.,
 ## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
+u"""Provides the ElasticsearchContext class, and some defaults."""
+
 from elasticsearch import TransportError, NotFoundError
 from elasticsearch.helpers import bulk
 import logging
@@ -56,8 +58,15 @@ DEFAULT_INDEX_SETTINGS = {
     'number_of_replicas': 1
 }
 
-## Wraps an Elasticsearch instance, maintaining schemas etc.
 class ElasticsearchContext(object):
+    u"""ElasticsearchContext class
+
+    Provides a wrapper for an Elasticsearch object, maintaining a
+    queue of actions to be performed and a list of schemas to be
+    represented by mappings in the Elasticsearch cluster.
+
+    """
+
     elasticsearch = None
     schemas = None
     index_prefix = None
@@ -90,12 +99,23 @@ class ElasticsearchContext(object):
 
         self.max_queue_length = max_queue_length
 
-    ## TODO: move this to ESLog
     def register_schema(self, logger, schema):
+        u"""Take a new schema and add it to the roster.
+
+        This also automatically parses the schema into a mapping and
+        adds it into the appropriate index template in Elasticsearch.
+
+        """
         self.schemas[logger] = schema
         self._update_index_templates()
 
     def queue_index(self, suffix, doc_type, body):
+        u"""Queue a new document to be added to Elasticsearch.
+
+        If the queue becomes longer than self.max_queue_length then it
+        is automatically flushed.
+
+        """
         ## TODO: async
         action = {
             '_op_type': 'index',
@@ -120,24 +140,36 @@ class ElasticsearchContext(object):
             self.flush()
 
     def flush(self):
+        u"""Perform all actions in the queue.
+
+        Uses elasticsearch.helpers.bulk, and empties the queue on
+        success.
+
+        """
         try:
             bulk(self.elasticsearch, self.queue)
             self.queue = []
-            #logging.getLogger(__name__).debug('Flushed the queue.')
-            #self.es.index(index = index, *args, **kwargs)
+            logging.getLogger(__name__).debug('Flushed the queue.')
         except TransportError, exception:
             logging.getLogger(__name__).error(
                 'Error in flushing queue.',
                 exc_info=exception)
 
     def _update_index_templates(self):
+        u"""Parse schemas into mappings and insert into Elasticsearch.
+
+        Puts mappings into Elasticsearch templates.  Should also
+        update mappings in existing indices, but this is currently
+        broken.
+
+        """
         mappings = self._build_mappings()
         template = {
             'template': self.index_prefix + '*',
             'settings': self.default_index_settings,
             'mappings': mappings
         }
-        #logging.getLogger(__name__).debug('Registering a new template.')
+        logging.getLogger(__name__).debug('Registering a new template.')
         self.elasticsearch.indices.put_template(
             name=self.index_prefix + '*',
             body=template
@@ -154,8 +186,9 @@ class ElasticsearchContext(object):
             except NotFoundError:
                 pass
 
-    ## TODO: investigate using setdefault
     def _build_mappings(self):
+        u"""Parses the schemas into Elasticsearch mappings."""
+
         mappings = {}
         for (type_name, schema) in self.schemas.items():
             this_mapping = self.default_base_mapping.copy()

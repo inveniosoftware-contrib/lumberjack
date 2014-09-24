@@ -17,12 +17,24 @@
 ## along with Invenio; if not, write to the Free Software Foundation, Inc.,
 ## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
+u"""Provides classes to fit into the Python logging framework."""
+
 import logging
 from elasticsearch import Elasticsearch
 import time
 
 class ElasticsearchFormatter(logging.Formatter):
+    u"""Formatter which prepares logs for insertion into Elasticsearch."""
+
     def format(self, record):
+        u"""Adds some metadata and deals with string logs.
+
+        Metadata: @timestamp and level (logging.ERROR etc.)
+
+        Puts string logs into a dict containing the string at index
+        'message'.
+
+        """
         # TODO don't glomp @timestamp and level if they already exist?
         if not (type(record.msg) == dict):
             es_document = { 'message': record.msg }
@@ -38,6 +50,8 @@ class ElasticsearchFormatter(logging.Formatter):
         return (es_type, es_document)
 
 class ElasticsearchHandler(logging.Handler):
+    u"""Log Handler subclass to put logs in Elasticsearch."""
+
     context = None
     lastFormattedRecord = None
     index_prefix = None
@@ -51,6 +65,12 @@ class ElasticsearchHandler(logging.Handler):
         self.suffix_format = suffix_format
 
     def emit(self, record):
+        u"""Format the log and pass it to an ElasticsearchContext instance.
+
+        Chooses the appropriate index time-suffix based on
+        self.suffix_format.
+
+        """
         self.lastFormattedRecord = record
 
         suffix = time.strftime(self.suffix_format, time.gmtime(record.created))
@@ -61,7 +81,15 @@ class ElasticsearchHandler(logging.Handler):
 
 ## Filter out ES-related errors so we don't feedback
 class ElasticsearchFilter(logging.Filter):
+    u"""Filter to remove Elasticsearch-related logs.
+
+    This is so that we don't create a feedback loop where inserting
+    logs creates more logs to be inserted.
+
+    """
     def filter(self, record):
+        u"""If the record['elasticsearch'] is True, discard the record."""
+
         if hasattr(record, 'elasticsearch') and record.elasticsearch == True:
             return 0
         else:
