@@ -73,11 +73,12 @@ class ESLog(object):
         u"""Wrapper for self.context.register_schema."""
         self.context.register_schema(logger, schema)
 
-def reset_everything(loggername = 'test',
-                     hosts = [{'host': 'localhost', 'port': 9199}],
-                     index_prefix = 'eslog-test-'):
-
+def reset_everything(loggername='test',
+                     hosts=[{'host': 'localhost', 'port': 9199}],
+                     index_prefix='eslog-test-'):
     u"""Useful function to reset a debugging environment."""
+    # pylint: disable=dangerous-default-value
+
     import sys
     from . import context
 
@@ -91,11 +92,11 @@ def reset_everything(loggername = 'test',
     logger.handlers = []
     base_mapping = context.DEFAULT_BASE_MAPPING
     base_mapping['_source'] = {'enabled': True}
-    esl = ESLog(hosts = hosts, index_prefix = index_prefix,
-                default_base_mapping = base_mapping)
+    esl = ESLog(hosts=hosts, index_prefix=index_prefix,
+                default_base_mapping=base_mapping)
 
-    esl.context.elasticsearch.indices.delete(index = index_prefix + '*')
-    
+    esl.context.elasticsearch.indices.delete(index=index_prefix + '*')
+
     handler = esl.get_handler()
     logger.addHandler(handler)
 

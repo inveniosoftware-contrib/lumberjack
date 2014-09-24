@@ -20,7 +20,6 @@
 u"""Provides classes to fit into the Python logging framework."""
 
 import logging
-from elasticsearch import Elasticsearch
 import time
 
 class ElasticsearchFormatter(logging.Formatter):
@@ -36,14 +35,14 @@ class ElasticsearchFormatter(logging.Formatter):
 
         """
         # TODO don't glomp @timestamp and level if they already exist?
-        if not (type(record.msg) == dict):
-            es_document = { 'message': record.msg }
+        if not type(record.msg) == dict:
+            es_document = {'message': record.msg}
         else:
             es_document = record.msg.copy()
 
         es_document['@timestamp'] = record.created
         es_document['level'] = record.levelno
-        
+
         record.message = es_document
 
         es_type = record.name
@@ -53,11 +52,11 @@ class ElasticsearchHandler(logging.Handler):
     u"""Log Handler subclass to put logs in Elasticsearch."""
 
     context = None
-    lastFormattedRecord = None
+    last_formatted_record = None
     index_prefix = None
 
     def __init__(self, context,
-      suffix_format = '%Y.%m'):
+                 suffix_format='%Y.%m'):
         logging.Handler.__init__(self)
         self.context = context
         self.setFormatter(ElasticsearchFormatter())
@@ -71,13 +70,12 @@ class ElasticsearchHandler(logging.Handler):
         self.suffix_format.
 
         """
-        self.lastFormattedRecord = record
+        self.last_formatted_record = record
 
         suffix = time.strftime(self.suffix_format, time.gmtime(record.created))
         (es_type, document) = self.format(record)
 
-        self.context.queue_index(suffix = suffix, doc_type = es_type, \
-          body = document)
+        self.context.queue_index(suffix=suffix, doc_type=es_type, body=document)
 
 ## Filter out ES-related errors so we don't feedback
 class ElasticsearchFilter(logging.Filter):
