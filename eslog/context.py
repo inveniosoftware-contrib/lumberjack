@@ -19,6 +19,8 @@
 
 u"""Provides the ElasticsearchContext class, and some defaults."""
 
+from __future__ import absolute_import
+
 from elasticsearch import TransportError, NotFoundError
 from elasticsearch.helpers import bulk
 import logging
