@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from eslog.testsuite import suite
+from testsuite import suite
 import unittest
 import logging
 import sys
