@@ -22,10 +22,12 @@ from __future__ import absolute_import
 import unittest
 from . import log
 from . import schema
+from . import requests_future
 
 def suite():
     suites = [
         log.suite(),
-        schema.suite()
+        schema.suite(),
+        requests_future.suite()
     ]
     return unittest.TestSuite(suites)
