@@ -84,4 +84,6 @@ class RequestsFuturesHttpConnection(Connection):
         start = time.time()
         return_future = self.session.request(method, url, data=body,
                                              timeout=timeout or self.timeout)
-        return return_future
+
+        # Hack otherwise elasticsearch-py breaks on bulk index.
+        return 0, {}, '{"items": []}'
