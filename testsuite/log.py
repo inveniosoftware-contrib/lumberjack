@@ -28,33 +28,25 @@ import sys
 import time
 from random import randint
 
-from .common import HOSTS, INDEX_PREFIX, ES_LOGLEVEL
+from .common import ESLogTestCase
 
 LOGGER_NAME = 'test'
 LOGGER_CHILD_NAME = 'test.child'
 
-class LogTestCase(unittest.TestCase):
+class LogTestCase(ESLogTestCase):
     def setUp(self):
-        self.index_infix = str(randint(0,2**30)) + '-'
-        
-        self.esl = eslog.ESLog(hosts=HOSTS,
-                               index_prefix=INDEX_PREFIX + self.index_infix)
-        self.es = self.esl.context.elasticsearch
-        
+        super(LogTestCase, self).setUp()
+        self.getESLogObject()
+
         self.logger = logging.getLogger(LOGGER_NAME)
         self.child_logger = logging.getLogger(LOGGER_CHILD_NAME)
 
         self.handler = self.esl.get_handler()
         self.logger.addHandler(self.handler)
 
-        l = logging.getLogger('elasticsearch')
-        l.setLevel(ES_LOGLEVEL)
-        l.addHandler(logging.StreamHandler(stream=sys.stderr))
-
     def tearDown(self):
         self.logger.handlers = []
-        self.esl.context.elasticsearch.indices.delete(
-            index=INDEX_PREFIX + self.index_infix + '*')
+        self.deleteIndices()
 
     def test_log_not_dynamic(self):
         schema = {
@@ -83,7 +75,7 @@ class LogTestCase(unittest.TestCase):
             'b': 24
         })
         res = self.es.search(
-            index=INDEX_PREFIX + self.index_infix + '*', doc_type=LOGGER_NAME,
+            index=self.index_prefix + '*', doc_type=LOGGER_NAME,
             body={
                 'query': {
                     'match': {
@@ -109,7 +101,7 @@ class LogTestCase(unittest.TestCase):
         musts.append({'match': {'level': level}})
         
         res = self.es.search(
-            index=INDEX_PREFIX + self.index_infix + '*', doc_type=LOGGER_NAME,
+            index=self.index_prefix + '*', doc_type=LOGGER_NAME,
             body={
                 'query': {
                     'bool': {

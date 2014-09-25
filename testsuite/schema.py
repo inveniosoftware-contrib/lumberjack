@@ -19,6 +19,7 @@
 
 from __future__ import absolute_import
 import unittest
+from .common import ESLogTestCase
 
 import eslog
 
@@ -27,8 +28,6 @@ import elasticsearch
 import sys
 import time
 from random import randint
-
-from .common import HOSTS, INDEX_PREFIX, ES_LOGLEVEL
 
 SCHEMA_A = {
     'dynamic': 'strict',
@@ -50,20 +49,13 @@ SCHEMA_A = {
     }
 }
 
-class SchemaTestCase(unittest.TestCase):
+class SchemaTestCase(ESLogTestCase):
     def setUp(self):
-        self.index_infix = str(randint(0, 2**30)) + '-'
-        self.esl = eslog.ESLog(hosts=HOSTS,
-                               index_prefix=INDEX_PREFIX + self.index_infix)
-        self.es = self.esl.context.elasticsearch
-        
-        l = logging.getLogger('elasticsearch')
-        l.setLevel(ES_LOGLEVEL)
-        l.addHandler(logging.StreamHandler(stream=sys.stderr))
+        super(SchemaTestCase, self).setUp()
+        self.getESLogObject()
 
     def tearDown(self):
-        self.esl.context.elasticsearch.indices.delete(
-            index=INDEX_PREFIX + self.index_infix + '*')
+        self.deleteIndices()
 
     def test_build_mappings_a(self):
         self.esl.context.schemas['type_a'] = SCHEMA_A
@@ -107,12 +99,11 @@ class SchemaTestCase(unittest.TestCase):
         self.esl.register_schema('type_a', SCHEMA_A)
 
         # Test it's now in ES.
-        res = self.es.indices.get_template(
-            name=INDEX_PREFIX + self.index_infix + '*')
+        res = self.es.indices.get_template(name=self.index_prefix + '*')
 
         expected_schema = self.esl.context._build_mappings()['type_a']
                 
-        assert res[INDEX_PREFIX + self.index_infix + '*'] \
+        assert res[self.index_prefix + '*'] \
             ['mappings']['type_a'] == expected_schema
 
 def suite():
