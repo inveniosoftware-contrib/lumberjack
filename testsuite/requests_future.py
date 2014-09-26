@@ -34,9 +34,9 @@ DOCUMENT = {
     'a_string': 'mice rice right across the page'
 }
 
-class RequestsFutureTestCase(ESLogTestCase):
+class RequestsFuturesTestCase(ESLogTestCase):
     def setUp(self):
-        super(RequestsFutureTestCase, self).setUp()
+        super(RequestsFuturesTestCase, self).setUp()
         self.es_sync = Elasticsearch(hosts=HOSTS)
         self.es_async = Elasticsearch(
             hosts=HOSTS,
@@ -46,6 +46,40 @@ class RequestsFutureTestCase(ESLogTestCase):
     def tearDown(self):
         self.deleteIndices(self.es_sync)
 
+DEAD_HOST = {'host': '240.0.0.1', 'port': 9200}
+class TransportTestCase(RequestsFuturesTestCase):
+    def testDeadConnection(self):
+        my_hosts = list(HOSTS)
+        my_hosts.append(DEAD_HOST)
+        deadhost_str = 'http://%s:%s' % (DEAD_HOST['host'], DEAD_HOST['port'])
+
+        self.es_async = Elasticsearch(
+            hosts=my_hosts,
+            transport_class=RequestsFuturesTransport,
+            connection_class=RequestsFuturesHttpConnection)
+
+        hosts = map(
+            lambda connection: connection.host,
+            self.es_async.transport.connection_pool.connections)
+
+        self.assertIn(deadhost_str, hosts)
+
+        # Doing this 10 times with 2 connections means we have a
+        # >99.9% chance of hitting the dead connection at some point,
+        # provided the selection is uniformly random.
+        for _ in range(10):
+            self.es_async.index(index=self.index_prefix + 'ttest',
+                                doc_type='type_a',
+                                body=DOCUMENT)
+
+        # Wait for requests to happen.
+        sleep(10)
+        hosts = map(
+            lambda connection: connection.host,
+            self.es_async.transport.connection_pool.connections)
+        self.assertNotIn(deadhost_str, hosts)
+
+class ConnectionTestCase(RequestsFuturesTestCase):
     def testIndex(self):
         self.es_async.index(
             index=self.index_prefix + 'rftest',
@@ -113,5 +147,7 @@ class RequestsFutureTestCase(ESLogTestCase):
         self.assertEqual(response['hits']['total'], 1000)
 
 def suite():
-    suite = unittest.makeSuite(RequestsFutureTestCase, 'test')
+    connection_suite = unittest.makeSuite(ConnectionTestCase, 'test')
+    transport_suite = unittest.makeSuite(TransportTestCase, 'test')
+    suit = unittest.TestSuite([connection_suite, transport_suite])
     return suite
