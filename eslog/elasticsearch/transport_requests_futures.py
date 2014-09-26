@@ -59,7 +59,7 @@ class RequestsFuturesTransport(Transport):
     ## modification is under the terms of the Apache License, Version
     ## 2.0, as found at <http://www.apache.org/licenses/LICENSE-2.0>.
     def perform_request(self, method, url, params=None, body=None, depth=0,
-                        last_error=None, callback=None):
+                        last_error=None):
         if body is not None:
             body = self.serializer.dumps(body)
 
@@ -85,11 +85,14 @@ class RequestsFuturesTransport(Transport):
 
         ignore = ()
         timeout = None
+        ## TODO: document this callback
+        callback = None
         if params:
             timeout = params.pop('request_timeout', None)
             ignore = params.pop('ignore', ())
             if isinstance(ignore, int):
                 ignore = (ignore, )
+            callback = params.pop('callback', None)
 
         ## TODO: What if last_error is None?
         if depth > self.max_retries:
@@ -99,17 +102,16 @@ class RequestsFuturesTransport(Transport):
         future = connection.perform_request(method, url, params, body,
                                             ignore=ignore, timeout=timeout)
 
-        def wrapper_callback(future):
+        def management_callback(future):
             exception = future.exception()
             if exception is not None:
                 self.mark_dead(connection)
                 self.perform_request(method, url, params, body, (depth+1),
-                                     last_error=exception, callback=callback)
-            else:
-                res = future.result()
-                callback(result)
+                                     last_error=exception)
 
-        future.add_done_callback(wrapper_callback)
+        future.add_done_callback(management_callback)
+        if callback is not None:
+            callback(future)
 
         ## Hack: Bulk operations need particular things to be returned here.
         return 0, {'items': []}
