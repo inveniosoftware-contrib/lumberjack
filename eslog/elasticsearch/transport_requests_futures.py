@@ -111,25 +111,7 @@ class RequestsFuturesTransport(Transport):
 
         future.add_done_callback(wrapper_callback)
 
-        return (), future
-        """
-        for attempt in range(self.max_retries + 1):
-            connection = self.get_connection()
-
-            try:
-                status, headers, data = connection.perform_request(method, url, params, body, ignore=ignore, timeout=timeout)
-            except ConnectionError:
-                self.mark_dead(connection)
-
-                # raise exception on last retry
-                if attempt == self.max_retries:
-                    raise
-            else:
-                # connection didn't fail, confirm it's live status
-                self.connection_pool.mark_live(connection)
-                if data:
-                    data = self.deserializer.loads(data, headers.get('content-type'))
-                return status, data
-        """
+        ## Hack: Bulk operations need particular things to be returned here.
+        return 0, {'items': []}
 
 

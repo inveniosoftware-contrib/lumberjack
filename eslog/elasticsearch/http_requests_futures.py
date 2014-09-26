@@ -85,5 +85,7 @@ class RequestsFuturesHttpConnection(Connection):
         return_future = self.session.request(method, url, data=body,
                                              timeout=timeout or self.timeout)
 
-        # Hack otherwise elasticsearch-py breaks on bulk index.
-        return 0, {}, '{"items": []}'
+        ## Because we return the future object instead of a tuple of
+        ## response data, this class doesn't work with the standard
+        ## transport classes.
+        return return_future
