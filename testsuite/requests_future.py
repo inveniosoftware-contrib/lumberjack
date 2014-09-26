@@ -40,7 +40,7 @@ class RequestsFutureTestCase(ESLogTestCase):
         self.es_sync = Elasticsearch(hosts=HOSTS)
         self.es_async = Elasticsearch(
             hosts=HOSTS,
-            #transport_class=RequestsFuturesTransport,
+            transport_class=RequestsFuturesTransport,
             connection_class=RequestsFuturesHttpConnection)
 
     def tearDown(self):
