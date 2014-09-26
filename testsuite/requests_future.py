@@ -56,7 +56,8 @@ class TransportTestCase(RequestsFuturesTestCase):
         self.es_async = Elasticsearch(
             hosts=my_hosts,
             transport_class=RequestsFuturesTransport,
-            connection_class=RequestsFuturesHttpConnection)
+            connection_class=RequestsFuturesHttpConnection,
+            max_retries=10)
 
         hosts = map(
             lambda connection: connection.host,
@@ -64,16 +65,23 @@ class TransportTestCase(RequestsFuturesTestCase):
 
         self.assertIn(deadhost_str, hosts)
 
+        futures = []
+        def append_to_futures(future):
+            futures.append(future)
+
         # Doing this 10 times with 2 connections means we have a
         # >99.9% chance of hitting the dead connection at some point,
         # provided the selection is uniformly random.
         for _ in range(10):
             self.es_async.index(index=self.index_prefix + 'ttest',
-                                doc_type='type_a',
-                                body=DOCUMENT)
+                                doc_type='type_a', body=DOCUMENT,
+                                params={'callback': append_to_futures,
+                                        'timeout': 5})
 
-        # Wait for requests to happen.
-        sleep(10)
+        # Block until requests finished.
+        for future in futures:
+            future.exception()
+
         hosts = map(
             lambda connection: connection.host,
             self.es_async.transport.connection_pool.connections)
@@ -81,17 +89,18 @@ class TransportTestCase(RequestsFuturesTestCase):
 
 class ConnectionTestCase(RequestsFuturesTestCase):
     def testIndex(self):
+        futures = []
+        def append_to_futures(future):
+            futures.append(future)
+
         self.es_async.index(
             index=self.index_prefix + 'rftest',
             doc_type='type_a',
             body=DOCUMENT)
 
-        # Wait for async request to complete.  It would be nice to
-        # block until the request got a reponse, which we could do
-        # using the generated Future object.  However, it turns out
-        # getting a handle to that object requires rewriting half the
-        # library.
-        sleep(5)
+        # Block until all requests finished.
+        for future in futures:
+            future.exception()
         query = {
             'query': {
                 'match': {
