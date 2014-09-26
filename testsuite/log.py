@@ -83,7 +83,7 @@ class LogTestCase(ESLogTestCase):
                     }
                 }
             })
-        assert res['hits']['total'] == 1
+        self.assertEqual(res['hits']['total'], 1)
     
     def test_log_dynamic(self):
         self._test_log()
@@ -109,7 +109,7 @@ class LogTestCase(ESLogTestCase):
                     }
                 }
             })
-        assert res['hits']['total'] == 1
+        self.assertEqual(res['hits']['total'], 1)
 
 def suite():
     suite = unittest.makeSuite(LogTestCase, 'test')

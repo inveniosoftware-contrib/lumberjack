@@ -93,7 +93,8 @@ class SchemaTestCase(ESLogTestCase):
                 }
             }
         }
-        assert self.esl.context._build_mappings()['type_a'] == expected_mapping_a
+        self.assertEqual(self.esl.context._build_mappings()['type_a'],
+                         expected_mapping_a)
 
     def test_register_schema(self):
         self.esl.register_schema('type_a', SCHEMA_A)
@@ -103,8 +104,8 @@ class SchemaTestCase(ESLogTestCase):
 
         expected_schema = self.esl.context._build_mappings()['type_a']
                 
-        assert res[self.index_prefix + '*'] \
-            ['mappings']['type_a'] == expected_schema
+        self.assertEqual(res[self.index_prefix + '*']['mappings']['type_a'],
+                         expected_schema)
 
 def suite():
     suite = unittest.makeSuite(SchemaTestCase, 'test')

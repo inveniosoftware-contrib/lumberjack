@@ -70,9 +70,9 @@ class RequestsFutureTestCase(ESLogTestCase):
             body=query)
 
         resp_doc = response['hits']['hits'][0]
-        assert resp_doc['_index'] == self.index_prefix + 'rftest'
-        assert resp_doc['_type'] == 'type_a'
-        assert resp_doc['_source'] == DOCUMENT
+        self.assertEqual(resp_doc['_index'], self.index_prefix + 'rftest')
+        self.assertEqual(resp_doc['_type'], 'type_a')
+        self.assertEqual(resp_doc['_source'], DOCUMENT)
 
     def testBulk(self):
         def generate_actions(n):
@@ -106,11 +106,11 @@ class RequestsFutureTestCase(ESLogTestCase):
             body=query)
 
         resp_doc = response['hits']['hits'][0]
-        assert resp_doc['_index'] == self.index_prefix + 'rftest'
-        assert resp_doc['_type'] == 'type_a'
-        assert resp_doc['_source'] == DOCUMENT
+        self.assertEqual(resp_doc['_index'], self.index_prefix + 'rftest')
+        self.assertEqual(resp_doc['_type'], 'type_a')
+        self.assertEqual(resp_doc['_source'], DOCUMENT)
 
-        assert response['hits']['total'] == 1000
+        self.assertEqual(response['hits']['total'], 1000)
 
 def suite():
     suite = unittest.makeSuite(RequestsFutureTestCase, 'test')
