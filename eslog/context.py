@@ -137,7 +137,7 @@ class ElasticsearchContext(object):
                 'dynamic': 'default'
             })
 
-        if self.max_queue_length is not None and \
+        if self.max_queue_length is None or \
             len(self.queue) >= self.max_queue_length:
             self.flush()
 
