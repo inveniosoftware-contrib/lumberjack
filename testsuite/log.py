@@ -41,7 +41,7 @@ class LogTestCase(LumberjackTestCase):
         self.logger = logging.getLogger(LOGGER_NAME)
         self.child_logger = logging.getLogger(LOGGER_CHILD_NAME)
 
-        self.handler = self.esl.get_handler()
+        self.handler = self.lj.get_handler()
         self.logger.addHandler(self.handler)
 
     def tearDown(self):
@@ -68,13 +68,12 @@ class LogTestCase(LumberjackTestCase):
                 }
             }
         }
-        self.esl.context.register_schema(schema=schema,
-                                         logger=LOGGER_NAME)
+        self.lj.register_schema(schema=schema, logger=LOGGER_NAME)
         self._test_log(log_dict={
             'a': 'mice rice right across the page',
             'b': 24
         })
-        res = self.es.search(
+        res = self.elasticsearch.search(
             index=self.index_prefix + '*', doc_type=LOGGER_NAME,
             body={
                 'query': {
@@ -90,8 +89,11 @@ class LogTestCase(LumberjackTestCase):
     
     def _test_log(self, level=logging.ERROR, log_dict={'a': 1, 'b': 2}):
         self.logger.log(level, log_dict)
-        self.esl.context.flush()
 
+        # Blocking flush
+        self.lj.action_queue._flush()
+
+        # ES is *near*-realtime
         time.sleep(2)
 
         musts = []
@@ -100,7 +102,7 @@ class LogTestCase(LumberjackTestCase):
             musts.append({'match': {k: v}})
         musts.append({'match': {'level': level}})
         
-        res = self.es.search(
+        res = self.elasticsearch.search(
             index=self.index_prefix + '*', doc_type=LOGGER_NAME,
             body={
                 'query': {
@@ -109,7 +111,7 @@ class LogTestCase(LumberjackTestCase):
                     }
                 }
             })
-        self.assertEqual(res['hits']['total'], 1)
+        self.assertGreater(res['hits']['total'], 0)
 
 def suite():
     suite = unittest.makeSuite(LogTestCase, 'test')

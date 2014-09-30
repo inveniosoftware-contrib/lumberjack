@@ -58,7 +58,7 @@ class SchemaTestCase(LumberjackTestCase):
         self.deleteIndices()
 
     def test_build_mappings_a(self):
-        self.esl.context.schemas['type_a'] = SCHEMA_A
+        self.lj.schema_manager.schemas['type_a'] = SCHEMA_A
         expected_mapping_a = {
             'dynamic': 'strict',
             '_source': {'enabled': True},
@@ -93,16 +93,17 @@ class SchemaTestCase(LumberjackTestCase):
                 }
             }
         }
-        self.assertEqual(self.esl.context._build_mappings()['type_a'],
+        self.assertEqual(self.lj.schema_manager._build_mappings()['type_a'],
                          expected_mapping_a)
 
     def test_register_schema(self):
-        self.esl.register_schema('type_a', SCHEMA_A)
+        self.lj.register_schema('type_a', SCHEMA_A)
 
         # Test it's now in ES.
-        res = self.es.indices.get_template(name=self.index_prefix + '*')
+        res = self.elasticsearch.indices.get_template(
+            name=self.index_prefix + '*')
 
-        expected_schema = self.esl.context._build_mappings()['type_a']
+        expected_schema = self.lj.schema_manager._build_mappings()['type_a']
                 
         self.assertEqual(res[self.index_prefix + '*']['mappings']['type_a'],
                          expected_schema)

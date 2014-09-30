@@ -38,16 +38,12 @@ class LumberjackTestCase(unittest.TestCase):
         es_logger = logging.getLogger('elasticsearch')
         es_logger.addHandler(stderrHandler)
 
-        futures_logger = logging.getLogger('concurrent.futures')
-        futures_logger.setLevel(FUTURES_LOGLEVEL)
-        futures_logger.addHandler(stderrHandler)
-
     def getLumberjackObject(self):
-        self.esl = lumberjack.Lumberjack(hosts=HOSTS,
-                               index_prefix=self.index_prefix)
-        self.es = self.esl.context.elasticsearch
+        self.lj = lumberjack.Lumberjack(hosts=HOSTS,
+                                        index_prefix=self.index_prefix)
+        self.elasticsearch = self.lj.elasticsearch
 
     def deleteIndices(self, elasticsearch=None):
         if elasticsearch is None:
-            elasticsearch = self.esl.context.elasticsearch
+            elasticsearch = self.lj.elasticsearch
         elasticsearch.indices.delete(index=self.index_prefix + '*')

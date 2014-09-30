@@ -22,7 +22,6 @@ from __future__ import absolute_import
 import unittest
 from . import log
 from . import schema
-from . import requests_future
 
 def suite():
     suites = [
