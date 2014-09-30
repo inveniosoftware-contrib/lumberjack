@@ -23,7 +23,7 @@ from __future__ import absolute_import
 
 from elasticsearch import Elasticsearch
 from .handler import ElasticsearchHandler
-from .context import ElasticsearchContext
+from .context import ElasticsearchContext, IndexerThread
 
 import logging
 
@@ -39,10 +39,12 @@ class Lumberjack(object):
     """
     context = None
     index_prefix = None
+    indexer = None
 
     ## TODO: **kwargs doesn't work here
     def __init__(self, index_prefix='generic-logging-',
-                 hosts=None, elasticsearch=None, context=None, **kwargs):
+                 hosts=None, elasticsearch=None, context=None,
+                 update_interval=30, **kwargs):
         if context is not None:
             LOG.debug('Using provided ES context.')
             self.context = context
@@ -63,6 +65,12 @@ class Lumberjack(object):
                 index_prefix=index_prefix, **kwargs)
 
         self.index_prefix = index_prefix
+
+        self.indexer = IndexerThread(self.context, update_interval)
+        self.indexer.start()
+
+    def trigger_flush(self):
+        self.indexer.trigger_flush()
 
     def get_handler(self, suffix_format='%Y.%m'):
         u"""Get a new logging handler."""

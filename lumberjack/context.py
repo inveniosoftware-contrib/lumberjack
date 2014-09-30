@@ -21,8 +21,11 @@ u"""Provides the ElasticsearchContext class, and some defaults."""
 
 from __future__ import absolute_import
 
-from elasticsearch import TransportError, NotFoundError
+from elasticsearch import TransportError, NotFoundError, ElasticsearchException
 from elasticsearch.helpers import bulk
+from threading import Thread, Event, Lock
+from time import sleep
+import traceback
 import logging
 
 
@@ -125,7 +128,11 @@ class ElasticsearchContext(object):
             '_type': doc_type,
             '_source': body
         }
+
+        self.indexer.queue_lock.acquire(True)
         self.queue.append(action)
+        self.indexer.queue_lock.release()
+
         logging.getLogger(__name__) \
             .debug('Put an action in the queue. qlen = %d, doc_type = %s',
                    len(self.queue), doc_type)
@@ -137,25 +144,10 @@ class ElasticsearchContext(object):
                 'dynamic': 'default'
             })
 
-        if self.max_queue_length is None or \
+        if self.max_queue_length is not None and \
+            self.indexer is not None and \
             len(self.queue) >= self.max_queue_length:
-            self.flush()
-
-    def flush(self):
-        u"""Perform all actions in the queue.
-
-        Uses elasticsearch.helpers.bulk, and empties the queue on
-        success.
-
-        """
-        try:
-            bulk(self.elasticsearch, self.queue)
-            self.queue = []
-            logging.getLogger(__name__).debug('Flushed the queue.')
-        except TransportError, exception:
-            logging.getLogger(__name__).error(
-                'Error in flushing queue.',
-                exc_info=exception)
+            self.indexer.trigger_flush()
 
     def _update_index_templates(self):
         u"""Parse schemas into mappings and insert into Elasticsearch.
@@ -223,3 +215,57 @@ class ElasticsearchContext(object):
 
             mappings[type_name] = this_mapping
         return mappings
+
+class IndexerThread(Thread):
+    context = None
+    interval = None
+    running = True
+    flush_event = None
+    queue_lock = None
+
+    def __init__(self, context, interval=30):
+        super(IndexerThread, self).__init__()
+        self.context = context
+        self.interval = interval
+        self.daemon = True
+        self.flush_event = Event()
+        self.queue_lock = Lock()
+        ## TODO: hacky; refactor
+        context.indexer = self
+
+    def trigger_flush(self):
+        logging.getLogger(__name__).debug('Triggering flush...')
+        self.flush_event.set()
+
+    def flush(self):
+        u"""Perform all actions in the queue.
+
+        Uses elasticsearch.helpers.bulk, and empties the queue on
+        success.
+
+        """
+        es = self.context.elasticsearch
+
+        self.queue_lock.acquire(True)
+        queue = list(self.context.queue)
+        self.context.queue = []
+        self.queue_lock.release()
+
+        try:
+            bulk(es, queue)
+        except TransportError, exception:
+            logging.getLogger(__name__).error(
+                'Error in flushing queue.  Lost %d logs', len(queue),
+                exc_info=exception)
+        else:
+            logging.getLogger(__name__).debug('Flushed the queue.')
+            self.flush_event.clear()
+
+    def run(self):
+        while self.running:
+            try:
+                self.flush()
+                self.flush_event.wait(self.interval)
+            except ElasticsearchException, exc:
+                traceback.print_exc(exc)
+        logging.getLogger(__name__).debug('Index thread terminated.')
