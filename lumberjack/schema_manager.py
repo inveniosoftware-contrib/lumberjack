@@ -17,17 +17,10 @@
 ## along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
 ## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
-u"""Provides the ElasticsearchContext class, and some defaults."""
-
 from __future__ import absolute_import
 
-from elasticsearch import TransportError, NotFoundError, ElasticsearchException
-from elasticsearch.helpers import bulk
-from threading import Thread, Event, Lock
-from time import sleep
-import traceback
 import logging
-
+from elasticsearch import NotFoundError
 
 DEFAULT_BASE_MAPPING = {
     #'dynamic': 'strict',
@@ -63,32 +56,20 @@ DEFAULT_INDEX_SETTINGS = {
     'number_of_replicas': 1
 }
 
-class ElasticsearchContext(object):
-    u"""ElasticsearchContext class
-
-    Provides a wrapper for an Elasticsearch object, maintaining a
-    queue of actions to be performed and a list of schemas to be
-    represented by mappings in the Elasticsearch cluster.
-
-    """
-
-    elasticsearch = None
+class SchemaManager(object):
     schemas = None
+    elasticsearch = None
     index_prefix = None
-    queue = None
 
     default_base_mapping = None
     default_types_properties = None
     default_index_settings = None
-    max_queue_length = None
 
-    def __init__(self, elasticsearch, index_prefix='generic-logging-',
-                 default_base_mapping=None, default_types_properties=None,
-                 default_index_settings=None, max_queue_length=None):
+    def __init__(self, elasticsearch, index_prefix, default_base_mapping=None,
+                 default_types_properties=None, default_index_settings=None):
         self.elasticsearch = elasticsearch
         self.schemas = {}
         self.index_prefix = index_prefix
-        self.queue = []
 
         self.default_base_mapping = default_base_mapping \
             if default_base_mapping is not None \
@@ -102,8 +83,6 @@ class ElasticsearchContext(object):
             if default_types_properties is not None \
             else DEFAULT_INDEX_SETTINGS
 
-        self.max_queue_length = max_queue_length
-
     def register_schema(self, logger, schema):
         u"""Take a new schema and add it to the roster.
 
@@ -113,41 +92,6 @@ class ElasticsearchContext(object):
         """
         self.schemas[logger] = schema
         self._update_index_templates()
-
-    def queue_index(self, suffix, doc_type, body):
-        u"""Queue a new document to be added to Elasticsearch.
-
-        If the queue becomes longer than self.max_queue_length then it
-        is automatically flushed.
-
-        """
-        ## TODO: async
-        action = {
-            '_op_type': 'index',
-            '_index': self.index_prefix + suffix,
-            '_type': doc_type,
-            '_source': body
-        }
-
-        self.indexer.queue_lock.acquire(True)
-        self.queue.append(action)
-        self.indexer.queue_lock.release()
-
-        logging.getLogger(__name__) \
-            .debug('Put an action in the queue. qlen = %d, doc_type = %s',
-                   len(self.queue), doc_type)
-
-        ## TODO: move this into ES itself
-        if doc_type not in self.schemas:
-            self.register_schema(doc_type, {
-                ## TODO: fix this
-                'dynamic': 'default'
-            })
-
-        if self.max_queue_length is not None and \
-            self.indexer is not None and \
-            len(self.queue) >= self.max_queue_length:
-            self.indexer.trigger_flush()
 
     def _update_index_templates(self):
         u"""Parse schemas into mappings and insert into Elasticsearch.
@@ -216,56 +160,3 @@ class ElasticsearchContext(object):
             mappings[type_name] = this_mapping
         return mappings
 
-class IndexerThread(Thread):
-    context = None
-    interval = None
-    running = True
-    flush_event = None
-    queue_lock = None
-
-    def __init__(self, context, interval=30):
-        super(IndexerThread, self).__init__()
-        self.context = context
-        self.interval = interval
-        self.daemon = True
-        self.flush_event = Event()
-        self.queue_lock = Lock()
-        ## TODO: hacky; refactor
-        context.indexer = self
-
-    def trigger_flush(self):
-        logging.getLogger(__name__).debug('Triggering flush...')
-        self.flush_event.set()
-
-    def flush(self):
-        u"""Perform all actions in the queue.
-
-        Uses elasticsearch.helpers.bulk, and empties the queue on
-        success.
-
-        """
-        es = self.context.elasticsearch
-
-        self.queue_lock.acquire(True)
-        queue = list(self.context.queue)
-        self.context.queue = []
-        self.queue_lock.release()
-
-        try:
-            bulk(es, queue)
-        except TransportError, exception:
-            logging.getLogger(__name__).error(
-                'Error in flushing queue.  Lost %d logs', len(queue),
-                exc_info=exception)
-        else:
-            logging.getLogger(__name__).debug('Flushed the queue.')
-            self.flush_event.clear()
-
-    def run(self):
-        while self.running:
-            try:
-                self.flush()
-                self.flush_event.wait(self.interval)
-            except ElasticsearchException, exc:
-                traceback.print_exc(exc)
-        logging.getLogger(__name__).debug('Index thread terminated.')

@@ -51,14 +51,13 @@ class ElasticsearchFormatter(logging.Formatter):
 class ElasticsearchHandler(logging.Handler):
     u"""Log Handler subclass to put logs in Elasticsearch."""
 
-    context = None
+    action_queue = None
     last_formatted_record = None
     index_prefix = None
 
-    def __init__(self, context,
-                 suffix_format='%Y.%m'):
+    def __init__(self, action_queue, suffix_format='%Y.%m'):
         logging.Handler.__init__(self)
-        self.context = context
+        self.action_queue = action_queue
         self.setFormatter(ElasticsearchFormatter())
 
         self.suffix_format = suffix_format
@@ -75,7 +74,8 @@ class ElasticsearchHandler(logging.Handler):
         suffix = time.strftime(self.suffix_format, time.gmtime(record.created))
         (es_type, document) = self.format(record)
 
-        self.context.queue_index(suffix=suffix, doc_type=es_type, body=document)
+        self.action_queue.queue_index(suffix=suffix, doc_type=es_type,
+                                      body=document)
 
 ## Filter out ES-related errors so we don't feedback
 class ElasticsearchFilter(logging.Filter):
