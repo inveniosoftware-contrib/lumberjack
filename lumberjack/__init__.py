@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 ##
-## This file is part of ESLog.
+## This file is part of Lumberjack.
 ## Copyright (C) 2014 CERN.
 ##
-## Invenio is free software; you can redistribute it and/or
+## Lumberjack is free software; you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as
 ## published by the Free Software Foundation; either version 2 of the
 ## License, or (at your option) any later version.
 ##
-## Invenio is distributed in the hope that it will be useful, but
+## Lumberjack is distributed in the hope that it will be useful, but
 ## WITHOUT ANY WARRANTY; without even the implied warranty of
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ## General Public License for more details.
 ##
 ## You should have received a copy of the GNU General Public License
-## along with Invenio; if not, write to the Free Software Foundation, Inc.,
+## along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
 ## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
 u"""Python Elasticsearch Logging Handler"""
@@ -29,7 +29,7 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
-class ESLog(object):
+class Lumberjack(object):
     ## TODO describe parameters for __init__
     u"""Main entry point to the module.
 
@@ -40,6 +40,7 @@ class ESLog(object):
     context = None
     index_prefix = None
 
+    ## TODO: **kwargs doesn't work here
     def __init__(self, index_prefix='generic-logging-',
                  hosts=None, elasticsearch=None, context=None, **kwargs):
         if context is not None:
@@ -69,13 +70,14 @@ class ESLog(object):
                                        suffix_format=suffix_format)
         return handler
 
+    ## TODO: doesn't work with async
     def register_schema(self, logger, schema):
         u"""Wrapper for self.context.register_schema."""
         self.context.register_schema(logger, schema)
 
 def reset_everything(loggername='test',
                      hosts=[{'host': 'localhost', 'port': 9199}],
-                     index_prefix='eslog-test-'):
+                     index_prefix='lumberjack-test-'):
     u"""Useful function to reset a debugging environment."""
     # pylint: disable=dangerous-default-value
 
@@ -92,7 +94,7 @@ def reset_everything(loggername='test',
     logger.handlers = []
     base_mapping = context.DEFAULT_BASE_MAPPING
     base_mapping['_source'] = {'enabled': True}
-    esl = ESLog(hosts=hosts, index_prefix=index_prefix,
+    esl = Lumberjack(hosts=hosts, index_prefix=index_prefix,
                 default_base_mapping=base_mapping)
 
     esl.context.elasticsearch.indices.delete(index=index_prefix + '*')
