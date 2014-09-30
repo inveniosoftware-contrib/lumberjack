@@ -28,6 +28,5 @@ def suite():
     suites = [
         log.suite(),
         schema.suite(),
-#        requests_future.suite()
     ]
     return unittest.TestSuite(suites)
