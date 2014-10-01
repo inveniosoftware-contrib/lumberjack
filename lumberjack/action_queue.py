@@ -25,6 +25,7 @@ from threading import Thread, Event, Lock
 import traceback
 import logging
 
+LOG = logging.getLogger(__name__)
 
 class ActionQueue(Thread):
     interval = None
@@ -67,27 +68,33 @@ class ActionQueue(Thread):
         try:
             bulk(self.elasticsearch, queue)
         except TransportError, exception:
-            logging.getLogger(__name__).error(
-                'Error in flushing queue.  Lost %d logs', len(queue),
-                exc_info=exception)
+            LOG.error('Error in flushing queue.  Lost %d logs', len(queue),
+                      exc_info=exception)
         else:
-            logging.getLogger(__name__).debug('Flushed the queue.')
+            LOG.debug('Flushed %d logs into Elasticsearch.', len(queue))
             self.flush_event.clear()
 
     def run(self):
         while True:
             try:
                 self._flush()
-                self.flush_event.wait(self.interval)
+                interval = self.interval
+                triggered = self.flush_event.wait(interval)
+                if triggered:
+                    LOG.debug('Flushing on external trigger.')
+                else:
+                    LOG.debug('Flushing after timeout of %.1fs.', interval)
             except ElasticsearchException, exc:
                 traceback.print_exc(exc)
-        logging.getLogger(__name__).debug('Index thread terminated.')
+            except Exception, exc:
+                LOG.error('Action queue thread terminated unexpectedly.')
+                raise
 
     ## These two methods to be called externally, i.e. from the main thread.
     ## TODO: Consider refactoring.
 
     def trigger_flush(self):
-        logging.getLogger(__name__).debug('Triggering flush...')
+        LOG.debug('Flush triggered; setting event object.')
         self.flush_event.set()
 
     def queue_index(self, suffix, doc_type, body):
@@ -109,12 +116,12 @@ class ActionQueue(Thread):
         self.queue.append(action)
         self.queue_lock.release()
 
-        logging.getLogger(__name__) \
-            .debug('Put an action in the queue. qlen = %d, doc_type = %s',
-                   len(self.queue), doc_type)
+        LOG.debug('Put an action in the queue. qlen = %d, doc_type = %s',
+                  len(self.queue), doc_type)
 
         ## TODO: do default schema
 
         if self.max_queue_length is not None and \
             len(self.queue) >= self.max_queue_length:
+            LOG.debug('Hit max_queue_length.')
             self.trigger_flush()
