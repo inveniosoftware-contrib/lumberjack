@@ -20,5 +20,5 @@
 from __future__ import absolute_import
 
 from .lumberjack import Lumberjack
-from .action_queue import ActionQueue
-from .schema_manager import SchemaManager
+from .actions import ActionQueue
+from .schemas import SchemaManager

@@ -23,8 +23,8 @@ from __future__ import absolute_import
 
 from elasticsearch import Elasticsearch
 from .handler import ElasticsearchHandler
-from .schema_manager import SchemaManager
-from .action_queue import ActionQueue
+from .schemas import SchemaManager
+from .actions import ActionQueue
 
 import logging
 
