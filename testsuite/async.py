@@ -44,7 +44,37 @@ class AsyncTestCase(LumberjackTestCase):
         self.assertEqual(MAX_QUEUE_LENGTH,
                          self.lj.action_queue.max_queue_length)
 
-    #Tests: max_queue_len, flushing, timeouts, running
+    def testBasicFlush(self):
+        self.lj.action_queue.queue_index(suffix='test',
+                                         doc_type=__name__,
+                                         body={'message': 'testD'})
+        self.lj.trigger_flush()
+        time.sleep(3)
+        res = self.elasticsearch.search(
+            index=self.index_prefix + '*', doc_type=__name__,
+            body={
+                'query': {
+                    'match': {'message': 'testD'}
+                }
+            })
+        self.assertEqual(res['hits']['total'], 1)
+
+    def testBasicTimeouts(self):
+        self.lj.trigger_flush()
+        time.sleep(1)
+        self.lj.action_queue.queue_index(suffix='test',
+                                         doc_type=__name__,
+                                         body={'message': 'testE'})
+        time.sleep(INTERVAL_SHORT + 1)
+        res = self.elasticsearch.search(
+            index=self.index_prefix + '*', doc_type=__name__,
+            body={
+                'query': {
+                    'match': {'message': 'testE'}
+                }
+            })
+        self.assertEqual(res['hits']['total'], 1)
+
     def testChangeUpdateInterval(self):
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
@@ -62,8 +92,10 @@ class AsyncTestCase(LumberjackTestCase):
         self.assertEqual(res['hits']['total'], 1)
 
         self.lj.action_queue.interval = INTERVAL_LONG
-        time.sleep(1)
         self.lj.trigger_flush()
+
+        # Wait for the flush to complete before adding to the queue.
+        time.sleep(1)
 
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
@@ -87,8 +119,45 @@ class AsyncTestCase(LumberjackTestCase):
             body=b_query)
         self.assertEqual(res['hits']['total'], 1)
     
-    def _testMaxQueueLen(self):
-        pass
+    def testMaxQueueLen(self):
+        # Disable periodic flushing
+        self.lj.action_queue.interval = None
+        self.lj.trigger_flush()
+
+        # Wait for flush to complete
+        time.sleep(1)
+
+        self.assertEqual(len(self.lj.action_queue.queue), 0)
+
+        doc = {'message': 'testC'}
+        while len(self.lj.action_queue.queue) < MAX_QUEUE_LENGTH-1:
+            self.lj.action_queue.queue_index(suffix='test',
+                                             doc_type=__name__,
+                                             body=doc)
+        # Wait for ES indexing in case the test failed and already flushed.
+        time.sleep(3)
+        res = self.elasticsearch.search(
+            index=self.index_prefix + '*', doc_type=__name__,
+            body={
+                'query': {
+                    'match': doc
+                }
+            })
+        self.assertEqual(res['hits']['total'], 0)
+
+        self.lj.action_queue.queue_index(suffix='test',
+                                         doc_type=__name__,
+                                         body=doc)
+        # Wait for flush and ES indexing
+        time.sleep(3)
+        res = self.elasticsearch.search(
+            index=self.index_prefix + '*', doc_type=__name__,
+            body={
+                'query': {
+                    'match': doc
+                }
+            })
+        self.assertEqual(res['hits']['total'], MAX_QUEUE_LENGTH)
 
 def suite():
     suite = unittest.makeSuite(AsyncTestCase, 'test')
