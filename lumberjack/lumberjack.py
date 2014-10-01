@@ -30,12 +30,35 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
+# TODO: debug mode -- synchronous, no queueing
 class Lumberjack(object):
-    ## TODO describe parameters for __init__
-    u"""Main entry point to the module.
+    u"""This is the initialisation point for using the lumberjack library.
 
-    Initialises the Elasticsearch connection pool and the prefix for
-    the index names.
+    In the intended use-case, this class is instantiated once and creates
+    handlers for use with Python's logging module.
+
+    For each type of log you want to store, you should provide a schema.  If
+    you don't, nothing bad will happen, but it makes your cluster rather
+    space-inefficient by default.
+
+    You should provide either a list of Elasticsearch hosts, or an
+    already-instantiated ``Elasticsearch`` object from elasticsearch-py.
+
+    :param index_prefix: A prefix for the created indices in Elasticsearch.
+
+    :param hosts: A list of Elasticsearch nodes to connect to, in the form
+        ``[{'host': '127.0.0.1', 'port': 9200}]``.  This is passed directly to
+        elasticsearch.Elasticsearch.
+
+    :param elasticsearch: An already-instantiated
+        ``elasticsearch.Elasticsearch`` object, perhaps with custom transports
+        etc.
+
+    :param interval: A number of seconds between calls to flush the queue of
+        log entries.
+
+    :param max_queue_length: The maximum length that the queue of log entries
+        is allowed to grow to before being flushed.
 
     """
     elasticsearch = None
@@ -49,6 +72,7 @@ class Lumberjack(object):
                  max_queue_length=None,):
         self.index_prefix = index_prefix
 
+        ## TODO: clean this up.  Error if both or neither are provided.
         if elasticsearch is not None:
             LOG.debug('Using provided ES instance.')
             self.elasticsearch = elasticsearch
@@ -68,14 +92,63 @@ class Lumberjack(object):
         self.action_queue.start()
 
     def trigger_flush(self):
+        u"""Manually trigger a flush of the log queue.
+
+        :note: This is not guaranteed to flush immediately; it merely cancels
+            the wait before the next flush in the ``ActionQueue`` thread.
+
+        """
         self.action_queue.trigger_flush()
 
     def get_handler(self, suffix_format='%Y.%m'):
-        u"""Get a new logging handler."""
+        u"""Spawn a new logging handler.
+
+        You should use this method to get a ``logging.Handler`` object to
+        attach to a ``logging.Logger`` object.
+
+        :note: It is almost definitely unwise to set the formatter of this
+            handler yourself.  The integrated formatter prepares documents
+            ready to be inserted into Elasticsearch.
+
+        :param suffix_format: The time format string to use as the suffix for
+            the indices.  By default your indices will be called, e.g.,
+            ``generic-logging-2014.09``.
+
+        """
         handler = ElasticsearchHandler(action_queue=self.action_queue,
                                        suffix_format=suffix_format)
         return handler
 
     def register_schema(self, logger, schema):
-        u"""Wrapper for self.schema_manager.register_schema."""
+        u"""Register a new log entry schema.
+
+        It is a good idea to register a 'schema' for every logger that you
+        attach a handler to.  This helps Elasticsearch store the data you
+        provide optimally.
+
+        Schemas correspond closely with mappings in Elasticsearch, but are
+        processed by Lumberjack to include some sensible defaults.  An example
+        schema might be::
+
+            {
+                '_source': True,
+                'properties': {
+                    'ip_address': {'type': 'ip'},
+                    'user_id': {'type': 'long'},
+                    'username': {'type': 'string'}
+                }
+            }
+
+        This method should be called once per schema to register; it's probably
+        a good idea to call it at the same time as attaching your handler to a
+        ``logging.Logger`` object.
+
+        :note: This method will block until the mapping is registered with
+            Elasticsearch, so you should do it in your initialisation.
+
+        :param logger: The name of the logger this schema will apply to.
+
+        :param schema: The schema to be used.
+
+        """
         self.schema_manager.register_schema(logger, schema)
