@@ -25,18 +25,30 @@ from random import randint
 
 HOSTS = [{'host': 'localhost', 'port': 9199}]
 INDEX_PREFIX = 'test-lumberjack-'
-ES_LOGLEVEL = logging.CRITICAL
-FUTURES_LOGLEVEL = logging.CRITICAL
+ES_LOGLEVEL = logging.ERROR
+LJ_LOGLEVEL = logging.ERROR
+
+LOG_FORMAT = "%(asctime)s %(name)s\t%(message)s"
+DATE_FORMAT = "%c"
 
 class LumberjackTestCase(unittest.TestCase):
     def setUp(self):
         self.index_prefix = INDEX_PREFIX + str(randint(0, 2**30)) + '-'
 
-        stderrHandler = logging.StreamHandler(stream=sys.stderr)
-        stderrHandler.setLevel(ES_LOGLEVEL)
+        #handler = logging.FileHandler('tests.log', mode='w')
+        handler = logging.StreamHandler(stream=sys.stderr)
+        formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=DATE_FORMAT)
+        handler.setFormatter(formatter)
 
         es_logger = logging.getLogger('elasticsearch')
-        es_logger.addHandler(stderrHandler)
+        es_logger.setLevel(ES_LOGLEVEL)
+        es_logger.handlers = []
+        es_logger.addHandler(handler)
+
+        lj_logger = logging.getLogger('lumberjack')
+        lj_logger.setLevel(LJ_LOGLEVEL)
+        lj_logger.handlers = []
+        lj_logger.addHandler(handler)
 
     def getLumberjackObject(self):
         self.lj = lumberjack.Lumberjack(hosts=HOSTS,
