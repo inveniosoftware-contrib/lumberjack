@@ -17,9 +17,11 @@
 ## along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
 ## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
+u"""Provides ActionQueue class"""
+
 from __future__ import absolute_import
 
-from elasticsearch import ElasticsearchException
+from elasticsearch import ElasticsearchException, TransportError
 from elasticsearch.helpers import bulk
 from threading import Thread, Event, Lock
 import traceback
@@ -28,6 +30,38 @@ import logging
 LOG = logging.getLogger(__name__)
 
 class ActionQueue(Thread):
+    u"""Holds a queue of actions and a thread to bulk-perform them
+
+    This is instantiated automatically by the ``lumberjack.Lumberjack`` object.
+    It will keep a queue of indexing actions to be performed in Elasticsearch,
+    and perform them bulk ('flush') when one of three things happens:
+
+    1. It has waited ``interval`` seconds without flushing, or
+
+    2. The length of the queue has exceeded ``max_queue_length``, or
+
+    3. A flush is triggered manually.
+
+    :note: You should not need to instantiate, or even interact with, this
+        yourself.  It is intended to be wrapped by ``lumberjack.Lumberjack``.
+        If you do, for some reason, use this yourself, it is a subclass of
+        ``threading.Thread``, so you should call its ``start()`` method after
+        initialisation.
+
+    :param elasticsearch: The ``elasticsearch.Elasticsearch`` object on which
+        to perform the bulk indexing.
+
+    :param index_prefix: The prefix of the indices to be created in
+        Elasticsearch.
+
+    :param max_queue_length: The maximum length the queue can reach before a
+        flush is triggered automaticall.
+
+    :param interval: The maximum time that can elapse between automatic
+        flushes.
+
+    """
+
     interval = None
     max_queue_length = None
     elasticsearch = None
@@ -49,14 +83,14 @@ class ActionQueue(Thread):
         self.queue = []
         self.flush_event = Event()
         self.queue_lock = Lock()
-        
+
         self.daemon = True
 
     def _flush(self):
         u"""Perform all actions in the queue.
 
-        Uses elasticsearch.helpers.bulk, and empties the queue on
-        success.
+        Uses elasticsearch.helpers.bulk, and empties the queue on success.
+        Uses the ``self.queue_lock`` to prevent a race condition.
 
         """
 
@@ -94,14 +128,33 @@ class ActionQueue(Thread):
     ## TODO: Consider refactoring.
 
     def trigger_flush(self):
+        u"""Manually trigger a flush of the queue.
+
+        This is to be called from the main thread, and fires an interrupt in
+        the timeout of the main loop.  As such it is not guaranteed to
+        immediately trigger a flush, only to skip the countdown to the next
+        one.  This means the flush will happen the next time this thread gets
+        switched to by the Python interpreter.
+
+        """
+
         LOG.debug('Flush triggered; setting event object.')
         self.flush_event.set()
 
     def queue_index(self, suffix, doc_type, body):
         u"""Queue a new document to be added to Elasticsearch.
 
-        If the queue becomes longer than self.max_queue_length then it
-        is automatically flushed.
+        If the queue becomes longer than self.max_queue_length then a flush is
+        automatically triggered.
+
+        :param suffix: The suffix of the index into which we should index the
+            document.
+
+        :param doc_type: The Elasticsearch type of the document to be indexed.
+            Usually this should correspond to a registered schema in
+            Lumberjack.
+
+        :param body: The actual document contents, as a dict.
 
         """
 

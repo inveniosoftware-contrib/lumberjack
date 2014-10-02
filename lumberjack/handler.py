@@ -28,10 +28,15 @@ class ElasticsearchFormatter(logging.Formatter):
     def format(self, record):
         u"""Adds some metadata and deals with string logs.
 
-        Metadata: @timestamp and level (logging.ERROR etc.)
+        It adds a ``@timestamp`` field and a ``level`` field.  ``level``
+        contains the loglevel as an integer.
 
-        Puts string logs into a dict containing the string at index
-        'message'.
+        Log data should be in a ``dict``, but to be compatible with the generic
+        Python logging recommendations, it can also format log data received as
+        a string.  In this case, a dict is returned containing a single
+        ``message`` field, whose data is the string message.
+
+        :param record: The ``logging.LogRecord`` object to be formatted.
 
         """
         # TODO don't glomp @timestamp and level if they already exist?
@@ -49,7 +54,15 @@ class ElasticsearchFormatter(logging.Formatter):
         return (es_type, es_document)
 
 class ElasticsearchHandler(logging.Handler):
-    u"""Log Handler subclass to put logs in Elasticsearch."""
+    u"""Elasticsearch-specific subclass of ``logging.LogHandler``.
+
+    :param action_queue: A ``lumberjack.ActionQueue`` object to which the
+        formatted log entries are passed.
+
+    :param suffix_format: The format from which to generate the time-based
+        index suffixes for Elasticsearch.  `strftime()` format.
+
+    """
 
     action_queue = None
     last_formatted_record = None
@@ -65,8 +78,10 @@ class ElasticsearchHandler(logging.Handler):
     def emit(self, record):
         u"""Format the log and pass it to an ElasticsearchContext instance.
 
-        Chooses the appropriate index time-suffix based on
-        self.suffix_format.
+        Generates the appropriate index time-suffix based on
+        ``self.suffix_format``.
+
+        :param record: The ``logging.LogRecord`` object to format and index.
 
         """
         self.last_formatted_record = record
@@ -76,19 +91,3 @@ class ElasticsearchHandler(logging.Handler):
 
         self.action_queue.queue_index(suffix=suffix, doc_type=es_type,
                                       body=document)
-
-## Filter out ES-related errors so we don't feedback
-class ElasticsearchFilter(logging.Filter):
-    u"""Filter to remove Elasticsearch-related logs.
-
-    This is so that we don't create a feedback loop where inserting
-    logs creates more logs to be inserted.
-
-    """
-    def filter(self, record):
-        u"""If the record['elasticsearch'] is True, discard the record."""
-
-        if hasattr(record, 'elasticsearch') and record.elasticsearch == True:
-            return 0
-        else:
-            return 1

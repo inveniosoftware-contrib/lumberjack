@@ -17,6 +17,8 @@
 ## along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
 ## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
+u"""Provides SchemaManager class."""
+
 from __future__ import absolute_import
 
 import logging
@@ -57,6 +59,31 @@ DEFAULT_INDEX_SETTINGS = {
 }
 
 class SchemaManager(object):
+    u"""Manages the 'schemas' for different types of log data.
+
+    A detailed description of schemas is given in the documentation for
+    ``lumberjack.Lumberjack.register_schema``.
+
+    This class manages a list of schemas registered and ensures that they are
+    processed and passed into Elasticsearch as appropriate.
+
+    :param elasticsearch: The ``elasticsearch.Elasticsearch`` object to
+        register mappings and templates with.
+
+    :param index_prefix: The the prefix of the Elasticsearch indices.
+
+    :param default_base_mapping: The basis for mappings inserted into
+        Elasticsearch templates.  When you register a schema, it is applied on
+        top of this basis.
+
+    :param default_types_properties: The default attributes given to various
+        types when a mapping is generated.
+
+    :param default_index_settings: The settings under which new indices are
+        created.  E.g. containing ``number_of_shards`` etc.
+
+    """
+
     schemas = None
     elasticsearch = None
     index_prefix = None
@@ -65,6 +92,7 @@ class SchemaManager(object):
     default_types_properties = None
     default_index_settings = None
 
+    # TODO: ugly. refactor.
     def __init__(self, elasticsearch, index_prefix, default_base_mapping=None,
                  default_types_properties=None, default_index_settings=None):
         self.elasticsearch = elasticsearch
@@ -88,6 +116,11 @@ class SchemaManager(object):
 
         This also automatically parses the schema into a mapping and
         adds it into the appropriate index template in Elasticsearch.
+
+        :param logger: The name of the logger which the log data will be
+            emitted on.
+
+        :param schema: The schema data to be processed into a mapping.
 
         """
         self.schemas[logger] = schema
@@ -159,4 +192,3 @@ class SchemaManager(object):
 
             mappings[type_name] = this_mapping
         return mappings
-
