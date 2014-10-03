@@ -11,8 +11,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   lumberjack
-   backend/backend
+   api
+   backend
 
 
 Indices and tables
