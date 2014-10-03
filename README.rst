@@ -20,6 +20,11 @@ Documentation can be built using Sphinx.
 Testing
 =======
 
-To run the test suite, simply run ::
+To run the test suite, you should have an Elasticsearch node available at
+http://localhost:9199.  (My setup is that I forward this port over SSH to the
+actual node I want to connect to; that way I can firewall the nodes and also
+easily switch between them.)
+
+To run the tests themselves, you should run::
 
     python run_tests.py
