@@ -15,7 +15,10 @@ Mappings in Elasticsearch can be configured as defaults and on a per-logger basi
 Documentation
 =============
 
-Documentation can be built using Sphinx.
+Documentation is available at <http://lumberjack.readthedocs.org/>, but can
+also be built using Sphinx::
+
+    cd docs/ && make html
 
 Testing
 =======
