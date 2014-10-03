@@ -102,7 +102,7 @@ class ActionQueue(Thread):
 
         try:
             bulk(self.elasticsearch, queue)
-        except TransportError, exception:
+        except TransportError as exception:
             LOG.error('Error in flushing queue.  Lost %d logs', len(queue),
                       exc_info=exception)
         else:
@@ -119,9 +119,9 @@ class ActionQueue(Thread):
                     LOG.debug('Flushing on external trigger.')
                 else:
                     LOG.debug('Flushing after timeout of %.1fs.', interval)
-            except ElasticsearchException, exc:
+            except ElasticsearchException as exc:
                 traceback.print_exc(exc)
-            except Exception, exc:
+            except Exception as exc:
                 LOG.error('Action queue thread terminated unexpectedly.')
                 raise
 
