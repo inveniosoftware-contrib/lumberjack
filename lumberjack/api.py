@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
-##
-## This file is part of Lumberjack.
-## Copyright (C) 2014 CERN.
-##
-## Lumberjack is free software; you can redistribute it and/or
-## modify it under the terms of the GNU General Public License as
-## published by the Free Software Foundation; either version 2 of the
-## License, or (at your option) any later version.
-##
-## Lumberjack is distributed in the hope that it will be useful, but
-## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-## General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
-## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+#
+# This file is part of Lumberjack.
+# Copyright (C) 2014 CERN.
+#
+# Lumberjack is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# Lumberjack is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
-u"""Python Elasticsearch Logging Handler"""
+"""Python Elasticsearch Logging Handler."""
 
 from __future__ import absolute_import
 
@@ -30,9 +30,11 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
+
 # TODO: debug mode -- synchronous, no queueing
 class Lumberjack(object):
-    u"""This is the initialisation point for using the lumberjack library.
+
+    """This is the initialisation point for using the lumberjack library.
 
     In the intended use-case, this class is instantiated once and creates
     handlers for use with Python's logging module.
@@ -61,6 +63,7 @@ class Lumberjack(object):
         is allowed to grow to before being flushed.
 
     """
+
     elasticsearch = None
     schema_manager = None
     action_queue = None
@@ -72,7 +75,7 @@ class Lumberjack(object):
                  max_queue_length=None,):
         self.index_prefix = index_prefix
 
-        ## TODO: clean this up.  Error if both or neither are provided.
+        # TODO: clean this up.  Error if both or neither are provided.
         if elasticsearch is not None:
             LOG.debug('Using provided ES instance.')
             self.elasticsearch = elasticsearch
@@ -83,7 +86,7 @@ class Lumberjack(object):
             LOG.debug('Using provided hosts.')
             self.elasticsearch = Elasticsearch(hosts=hosts)
 
-        ## TODO: read args from a config here.
+        # TODO: read args from a config here.
         self.schema_manager = SchemaManager(self.elasticsearch, index_prefix)
         self.action_queue = ActionQueue(self.elasticsearch, index_prefix,
                                         interval=interval,
@@ -92,7 +95,7 @@ class Lumberjack(object):
         self.action_queue.start()
 
     def trigger_flush(self):
-        u"""Manually trigger a flush of the log queue.
+        """Manually trigger a flush of the log queue.
 
         :note: This is not guaranteed to flush immediately; it merely cancels
             the wait before the next flush in the ``ActionQueue`` thread.
@@ -101,7 +104,7 @@ class Lumberjack(object):
         self.action_queue.trigger_flush()
 
     def get_handler(self, suffix_format='%Y.%m'):
-        u"""Spawn a new logging handler.
+        """Spawn a new logging handler.
 
         You should use this method to get a ``logging.Handler`` object to
         attach to a ``logging.Logger`` object.
@@ -120,7 +123,7 @@ class Lumberjack(object):
         return handler
 
     def register_schema(self, logger, schema):
-        u"""Register a new log entry schema.
+        """Register a new log entry schema.
 
         It is a good idea to register a 'schema' for every logger that you
         attach a handler to.  This helps Elasticsearch store the data you

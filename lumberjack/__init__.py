@@ -17,7 +17,7 @@
 # along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
-u"""Module for integrating Elasticsearch into Python's ``logging`` library."""
+"""Module for integrating Elasticsearch into Python's ``logging`` library."""
 
 from __future__ import absolute_import
 
@@ -25,4 +25,4 @@ from .api import Lumberjack
 from .actions import ActionQueue
 from .schemas import SchemaManager
 
-__all__ = ['Lumberjack']
+__all__ = ('Lumberjack',)

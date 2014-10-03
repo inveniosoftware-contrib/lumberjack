@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
-##
-## This file is part of Lumberjack.
-## Copyright (C) 2014 CERN.
-##
-## Lumberjack is free software; you can redistribute it and/or
-## modify it under the terms of the GNU General Public License as
-## published by the Free Software Foundation; either version 2 of the
-## License, or (at your option) any later version.
-##
-## Lumberjack is distributed in the hope that it will be useful, but
-## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-## General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
-## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+#
+# This file is part of Lumberjack.
+# Copyright (C) 2014 CERN.
+#
+# Lumberjack is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# Lumberjack is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
 from __future__ import absolute_import
 import unittest
@@ -32,6 +32,7 @@ from .common import LumberjackTestCase
 
 LOGGER_NAME = 'test'
 LOGGER_CHILD_NAME = 'test.child'
+
 
 class LogTestCase(LumberjackTestCase):
     def setUp(self):
@@ -83,10 +84,10 @@ class LogTestCase(LumberjackTestCase):
                 }
             })
         self.assertEqual(res['hits']['total'], 1)
-    
+
     def test_log_dynamic(self):
         self._test_log()
-    
+
     def _test_log(self, level=logging.ERROR, log_dict={'a': 1, 'b': 2}):
         self.logger.log(level, log_dict)
 
@@ -101,7 +102,7 @@ class LogTestCase(LumberjackTestCase):
         for (k, v) in log_dict.items():
             musts.append({'match': {k: v}})
         musts.append({'match': {'level': level}})
-        
+
         res = self.elasticsearch.search(
             index=self.index_prefix + '*', doc_type=LOGGER_NAME,
             body={
@@ -112,6 +113,7 @@ class LogTestCase(LumberjackTestCase):
                 }
             })
         self.assertGreater(res['hits']['total'], 0)
+
 
 def suite():
     suite = unittest.makeSuite(LogTestCase, 'test')

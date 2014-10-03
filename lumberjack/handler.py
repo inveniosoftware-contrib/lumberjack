@@ -1,32 +1,34 @@
 # -*- coding: utf-8 -*-
-##
-## This file is part of Lumberjack.
-## Copyright (C) 2014 CERN.
-##
-## Lumberjack is free software; you can redistribute it and/or
-## modify it under the terms of the GNU General Public License as
-## published by the Free Software Foundation; either version 2 of the
-## License, or (at your option) any later version.
-##
-## Lumberjack is distributed in the hope that it will be useful, but
-## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-## General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
-## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+#
+# This file is part of Lumberjack.
+# Copyright (C) 2014 CERN.
+#
+# Lumberjack is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# Lumberjack is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
-u"""Provides classes to fit into the Python logging framework."""
+"""Provide classes to fit into the Python logging framework."""
 
 import logging
 import time
 
+
 class ElasticsearchFormatter(logging.Formatter):
-    u"""Formatter which prepares logs for insertion into Elasticsearch."""
+
+    """Formatter which prepares logs for insertion into Elasticsearch."""
 
     def format(self, record):
-        u"""Adds some metadata and deals with string logs.
+        """Add some metadata and deals with string logs.
 
         It adds a ``@timestamp`` field and a ``level`` field.  ``level``
         contains the loglevel as an integer.
@@ -53,8 +55,10 @@ class ElasticsearchFormatter(logging.Formatter):
         es_type = record.name
         return (es_type, es_document)
 
+
 class ElasticsearchHandler(logging.Handler):
-    u"""Elasticsearch-specific subclass of ``logging.LogHandler``.
+
+    """Elasticsearch-specific subclass of ``logging.LogHandler``.
 
     :param action_queue: A ``lumberjack.ActionQueue`` object to which the
         formatted log entries are passed.
@@ -76,7 +80,7 @@ class ElasticsearchHandler(logging.Handler):
         self.suffix_format = suffix_format
 
     def emit(self, record):
-        u"""Format the log and pass it to an ElasticsearchContext instance.
+        """Format the log and pass it to an ElasticsearchContext instance.
 
         Generates the appropriate index time-suffix based on
         ``self.suffix_format``.

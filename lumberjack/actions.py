@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
-##
-## This file is part of Lumberjack.
-## Copyright (C) 2014 CERN.
-##
-## Lumberjack is free software; you can redistribute it and/or
-## modify it under the terms of the GNU General Public License as
-## published by the Free Software Foundation; either version 2 of the
-## License, or (at your option) any later version.
-##
-## Lumberjack is distributed in the hope that it will be useful, but
-## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-## General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
-## 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+#
+# This file is part of Lumberjack.
+# Copyright (C) 2014 CERN.
+#
+# Lumberjack is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# Lumberjack is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Lumberjack; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
-u"""Provides ActionQueue class"""
+"""Provide the ActionQueue class."""
 
 from __future__ import absolute_import
 
@@ -29,8 +29,10 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
+
 class ActionQueue(Thread):
-    u"""Holds a queue of actions and a thread to bulk-perform them
+
+    """Hold a queue of actions and a thread to bulk-perform them.
 
     This is instantiated automatically by the ``lumberjack.Lumberjack`` object.
     It will keep a queue of indexing actions to be performed in Elasticsearch,
@@ -87,13 +89,12 @@ class ActionQueue(Thread):
         self.daemon = True
 
     def _flush(self):
-        u"""Perform all actions in the queue.
+        """Perform all actions in the queue.
 
         Uses elasticsearch.helpers.bulk, and empties the queue on success.
         Uses the ``self.queue_lock`` to prevent a race condition.
 
         """
-
         self.queue_lock.acquire(True)
         queue = list(self.queue)
         self.queue = []
@@ -124,11 +125,11 @@ class ActionQueue(Thread):
                 LOG.error('Action queue thread terminated unexpectedly.')
                 raise
 
-    ## These two methods to be called externally, i.e. from the main thread.
-    ## TODO: Consider refactoring.
+    # These two methods to be called externally, i.e. from the main thread.
+    # TODO: Consider refactoring.
 
     def trigger_flush(self):
-        u"""Manually trigger a flush of the queue.
+        """Manually trigger a flush of the queue.
 
         This is to be called from the main thread, and fires an interrupt in
         the timeout of the main loop.  As such it is not guaranteed to
@@ -137,12 +138,11 @@ class ActionQueue(Thread):
         switched to by the Python interpreter.
 
         """
-
         LOG.debug('Flush triggered; setting event object.')
         self.flush_event.set()
 
     def queue_index(self, suffix, doc_type, body):
-        u"""Queue a new document to be added to Elasticsearch.
+        """Queue a new document to be added to Elasticsearch.
 
         If the queue becomes longer than self.max_queue_length then a flush is
         automatically triggered.
@@ -157,7 +157,6 @@ class ActionQueue(Thread):
         :param body: The actual document contents, as a dict.
 
         """
-
         action = {
             '_op_type': 'index',
             '_index': self.index_prefix + suffix,
@@ -172,9 +171,9 @@ class ActionQueue(Thread):
         LOG.debug('Put an action in the queue. qlen = %d, doc_type = %s',
                   len(self.queue), doc_type)
 
-        ## TODO: do default schema
+        # TODO: do default schema
 
         if self.max_queue_length is not None and \
-            len(self.queue) >= self.max_queue_length:
+                len(self.queue) >= self.max_queue_length:
             LOG.debug('Hit max_queue_length.')
             self.trigger_flush()
