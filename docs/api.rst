@@ -1,8 +1,5 @@
-Lumberjack
-==========
+API
+===
 
 .. automodule:: lumberjack
-   :members:
-
-.. autoclass:: lumberjack.Lumberjack
-   :members:
+    :members:

@@ -123,23 +123,6 @@ class Lumberjack(object):
         attach a handler to.  This helps Elasticsearch store the data you
         provide optimally.
 
-        Schemas correspond closely with mappings in Elasticsearch, but are
-        processed by Lumberjack to include some sensible defaults.  An example
-        schema might be::
-
-            {
-                '_source': True,
-                'properties': {
-                    'ip_address': {'type': 'ip'},
-                    'user_id': {'type': 'long'},
-                    'username': {'type': 'string'}
-                }
-            }
-
-        This method should be called once per schema to register; it's probably
-        a good idea to call it at the same time as attaching your handler to a
-        ``logging.Logger`` object.
-
         :note: This method will block until the mapping is registered with
             Elasticsearch, so you should do it in your initialisation.
 

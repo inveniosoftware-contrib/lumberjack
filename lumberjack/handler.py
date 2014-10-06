@@ -68,6 +68,7 @@ class ElasticsearchHandler(logging.Handler):
 
     """
 
+    # TODO: suffix_format in config
     def __init__(self, action_queue, suffix_format='%Y.%m'):
         logging.Handler.__init__(self)
         self.action_queue = action_queue
