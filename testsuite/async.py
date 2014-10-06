@@ -40,6 +40,10 @@ class AsyncTestCase(LumberjackTestCase):
         self.lj.register_schema(__name__, {'_source': {'enabled': True}})
         self.elasticsearch = self.lj.elasticsearch
 
+    def tearDown(self):
+        super(AsyncTestCase, self).tearDown()
+        self.deleteIndices()
+
     def testParamsPassedToActionQueue(self):
         self.assertEqual(INTERVAL_SHORT, self.lj.action_queue.interval)
         self.assertEqual(MAX_QUEUE_LENGTH,
