@@ -113,8 +113,3 @@ class LogTestCase(LumberjackTestCase):
                 }
             })
         self.assertGreater(res['hits']['total'], 0)
-
-
-def suite():
-    suite = unittest.makeSuite(LogTestCase, 'test')
-    return suite

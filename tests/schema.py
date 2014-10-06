@@ -108,8 +108,3 @@ class SchemaTestCase(LumberjackTestCase):
 
         self.assertEqual(res[self.index_prefix + '*']['mappings']['type_a'],
                          expected_schema)
-
-
-def suite():
-    suite = unittest.makeSuite(SchemaTestCase, 'test')
-    return suite

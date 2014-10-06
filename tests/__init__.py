@@ -19,16 +19,6 @@
 
 from __future__ import absolute_import
 
-import unittest
-from . import log
-from . import schema
-from . import async
-
-
-def suite():
-    suites = [
-        log.suite(),
-        schema.suite(),
-        async.suite()
-    ]
-    return unittest.TestSuite(suites)
+from .log import *
+from .schema import *
+from .async import *

@@ -163,8 +163,3 @@ class AsyncTestCase(LumberjackTestCase):
                 }
             })
         self.assertEqual(res['hits']['total'], MAX_QUEUE_LENGTH)
-
-
-def suite():
-    suite = unittest.makeSuite(AsyncTestCase, 'test')
-    return suite

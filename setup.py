@@ -60,11 +60,6 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Development Status :: 3 - Alpha',
     ],
-    #entry_points={
-    #    'flask_registry.test_entry': [
-    #        'testcase = flask_registry:RegistryBase',
-    #    ]
-    #},
-    #test_suite='nose.collector',
-    #tests_require=['nose', 'coverage'],
+    test_suite='nose.collector',
+    tests_require=['nose', 'coverage'],
 )
