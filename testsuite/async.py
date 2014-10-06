@@ -44,12 +44,12 @@ class AsyncTestCase(LumberjackTestCase):
         super(AsyncTestCase, self).tearDown()
         self.deleteIndices()
 
-    def testParamsPassedToActionQueue(self):
+    def test_params_passed_to_action_queue(self):
         self.assertEqual(INTERVAL_SHORT, self.lj.action_queue.interval)
         self.assertEqual(MAX_QUEUE_LENGTH,
                          self.lj.action_queue.max_queue_length)
 
-    def testBasicFlush(self):
+    def test_basic_flush(self):
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body={'message': 'testD'})
@@ -64,7 +64,7 @@ class AsyncTestCase(LumberjackTestCase):
             })
         self.assertEqual(res['hits']['total'], 1)
 
-    def testBasicTimeouts(self):
+    def test_basic_timeouts(self):
         self.lj.trigger_flush()
         time.sleep(1)
         self.lj.action_queue.queue_index(suffix='test',
@@ -80,7 +80,7 @@ class AsyncTestCase(LumberjackTestCase):
             })
         self.assertEqual(res['hits']['total'], 1)
 
-    def testChangeUpdateInterval(self):
+    def test_change_update_interval(self):
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body={'message': 'testA'})
@@ -124,7 +124,7 @@ class AsyncTestCase(LumberjackTestCase):
             body=b_query)
         self.assertEqual(res['hits']['total'], 1)
 
-    def testMaxQueueLen(self):
+    def test_max_queue_length(self):
         # Disable periodic flushing
         self.lj.action_queue.interval = None
         self.lj.trigger_flush()
