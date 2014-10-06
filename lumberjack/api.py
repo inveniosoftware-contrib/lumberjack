@@ -64,12 +64,6 @@ class Lumberjack(object):
 
     """
 
-    elasticsearch = None
-    schema_manager = None
-    action_queue = None
-
-    index_prefix = None
-
     def __init__(self, index_prefix='generic-logging-',
                  hosts=None, elasticsearch=None, interval=30,
                  max_queue_length=None,):

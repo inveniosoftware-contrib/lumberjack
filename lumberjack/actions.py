@@ -64,15 +64,6 @@ class ActionQueue(Thread):
 
     """
 
-    interval = None
-    max_queue_length = None
-    elasticsearch = None
-    index_prefix = None
-
-    flush_event = None
-    queue_lock = None
-    queue = None
-
     def __init__(self, elasticsearch, index_prefix, max_queue_length,
                  interval):
         super(ActionQueue, self).__init__()

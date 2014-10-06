@@ -86,14 +86,6 @@ class SchemaManager(object):
 
     """
 
-    schemas = None
-    elasticsearch = None
-    index_prefix = None
-
-    default_base_mapping = None
-    default_types_properties = None
-    default_index_settings = None
-
     # TODO: ugly. refactor.
     def __init__(self, elasticsearch, index_prefix, default_base_mapping=None,
                  default_types_properties=None, default_index_settings=None):

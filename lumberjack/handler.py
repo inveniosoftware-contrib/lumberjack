@@ -68,10 +68,6 @@ class ElasticsearchHandler(logging.Handler):
 
     """
 
-    action_queue = None
-    last_formatted_record = None
-    index_prefix = None
-
     def __init__(self, action_queue, suffix_format='%Y.%m'):
         logging.Handler.__init__(self)
         self.action_queue = action_queue
