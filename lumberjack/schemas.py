@@ -24,41 +24,6 @@ from __future__ import absolute_import
 import logging
 from elasticsearch import NotFoundError
 
-DEFAULT_BASE_MAPPING = {
-    # 'dynamic': 'strict',
-    '_source': {'enabled': False},
-    '_all': {'enabled': False},
-    '_ttl': {'enabled': True},
-    'properties': {
-        'message': {
-            'type': 'string'
-        },
-        '@timestamp': {
-            'type': 'date',
-        },
-        'level': {
-            'type': 'integer'
-        }
-    }
-}
-
-DEFAULT_TYPES_PROPERTIES = {
-    'string': {
-        'index': 'not_analyzed',
-        'norms': {'enabled': False}
-    },
-    'date': {
-        'format': 'dateOptionalTime'
-    }
-}
-
-# TODO: put this in a config option
-DEFAULT_INDEX_SETTINGS = {
-    'number_of_shards': 6,
-    'number_of_replicas': 1
-}
-
-
 class SchemaManager(object):
 
     """Manage the 'schemas' for different types of log data.
@@ -86,24 +51,12 @@ class SchemaManager(object):
 
     """
 
-    # TODO: ugly. refactor.
-    def __init__(self, elasticsearch, index_prefix, default_base_mapping=None,
-                 default_types_properties=None, default_index_settings=None):
+    # TODO: update docs
+    def __init__(self, elasticsearch, config):
         self.elasticsearch = elasticsearch
         self.schemas = {}
-        self.index_prefix = index_prefix
 
-        self.default_base_mapping = default_base_mapping \
-            if default_base_mapping is not None \
-            else DEFAULT_BASE_MAPPING
-
-        self.default_types_properties = default_types_properties \
-            if default_types_properties is not None \
-            else DEFAULT_TYPES_PROPERTIES
-
-        self.default_index_settings = default_index_settings \
-            if default_types_properties is not None \
-            else DEFAULT_INDEX_SETTINGS
+        self.config = config
 
     def register_schema(self, logger, schema):
         """Take a new schema and add it to the roster.
@@ -129,13 +82,13 @@ class SchemaManager(object):
         """
         mappings = self._build_mappings()
         template = {
-            'template': self.index_prefix + '*',
-            'settings': self.default_index_settings,
+            'template': self.config['index_prefix'] + '*',
+            'settings': self.config['default_index_settings'],
             'mappings': mappings
         }
         logging.getLogger(__name__).debug('Registering a new template.')
         self.elasticsearch.indices.put_template(
-            name=self.index_prefix + '*',
+            name=self.config['index_prefix'] + '*',
             body=template
         )
         # Try to update existing things.
@@ -143,7 +96,7 @@ class SchemaManager(object):
         for (doc_type, mapping) in mappings.items():
             try:
                 self.elasticsearch.indices.put_mapping(
-                    index=self.index_prefix + '*',
+                    index=self.config['index_prefix'] + '*',
                     doc_type=doc_type,
                     body=mapping
                 )
@@ -154,7 +107,7 @@ class SchemaManager(object):
         """Parse the schemas into Elasticsearch mappings."""
         mappings = {}
         for (type_name, schema) in self.schemas.items():
-            this_mapping = self.default_base_mapping.copy()
+            this_mapping = self.config['default_mapping'].copy()
             working_schema = schema.copy()
 
             # Combine the unprocessed properties into this_mapping.
@@ -170,9 +123,10 @@ class SchemaManager(object):
 
                 if ('type' in field_info and
                         field_info['type'] in
-                        self.default_types_properties):
+                        self.config['default_type_properties']):
                     expanded_properties[field_name].update(
-                        self.default_types_properties[field_info['type']])
+                        self.config['default_type_properties'] \
+                            [field_info['type']])
 
                 expanded_properties[field_name].update(field_info)
 

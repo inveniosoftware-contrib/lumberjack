@@ -102,9 +102,9 @@ class SchemaTestCase(LumberjackTestCase):
 
         # Test it's now in ES.
         res = self.elasticsearch.indices.get_template(
-            name=self.index_prefix + '*')
+            name=self.config['index_prefix'] + '*')
 
         expected_schema = self.lj.schema_manager._build_mappings()['type_a']
 
-        self.assertEqual(res[self.index_prefix + '*']['mappings']['type_a'],
-                         expected_schema)
+        self.assertEqual(res[self.config['index_prefix'] + '*'] \
+                         ['mappings']['type_a'], expected_schema)

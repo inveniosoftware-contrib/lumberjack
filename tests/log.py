@@ -75,7 +75,7 @@ class LogTestCase(LumberjackTestCase):
             'b': 24
         })
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=LOGGER_NAME,
+            index=self.config['index_prefix'] + '*', doc_type=LOGGER_NAME,
             body={
                 'query': {
                     'match': {
@@ -104,7 +104,7 @@ class LogTestCase(LumberjackTestCase):
         musts.append({'match': {'level': level}})
 
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=LOGGER_NAME,
+            index=self.config['index_prefix'] + '*', doc_type=LOGGER_NAME,
             body={
                 'query': {
                     'bool': {

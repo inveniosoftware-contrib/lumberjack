@@ -64,14 +64,11 @@ class ActionQueue(Thread):
 
     """
 
-    def __init__(self, elasticsearch, index_prefix, max_queue_length,
-                 interval):
+    def __init__(self, elasticsearch, config):
         super(ActionQueue, self).__init__()
 
         self.elasticsearch = elasticsearch
-        self.interval = interval
-        self.max_queue_length = max_queue_length
-        self.index_prefix = index_prefix
+        self.config = config
 
         self.queue = []
         self.flush_event = Event()
@@ -104,7 +101,7 @@ class ActionQueue(Thread):
         while True:
             try:
                 self._flush()
-                interval = self.interval
+                interval = self.config['interval']
                 triggered = self.flush_event.wait(interval)
                 if triggered:
                     LOG.debug('Flushing on external trigger.')
@@ -150,7 +147,7 @@ class ActionQueue(Thread):
         """
         action = {
             '_op_type': 'index',
-            '_index': self.index_prefix + suffix,
+            '_index': self.config['index_prefix'] + suffix,
             '_type': doc_type,
             '_source': body
         }
@@ -164,7 +161,7 @@ class ActionQueue(Thread):
 
         # TODO: do default schema
 
-        if self.max_queue_length is not None and \
-                len(self.queue) >= self.max_queue_length:
+        if self.config['max_queue_length'] is not None and \
+                len(self.queue) >= self.config['max_queue_length']:
             LOG.debug('Hit max_queue_length.')
             self.trigger_flush()

@@ -25,6 +25,7 @@ from elasticsearch import Elasticsearch
 from .handler import ElasticsearchHandler
 from .schemas import SchemaManager
 from .actions import ActionQueue
+from .config import DEFAULT_CONFIG
 
 import logging
 
@@ -64,11 +65,8 @@ class Lumberjack(object):
 
     """
 
-    def __init__(self, index_prefix='generic-logging-',
-                 hosts=None, elasticsearch=None, interval=30,
-                 max_queue_length=None,):
-        self.index_prefix = index_prefix
-
+    # TODO: update docs
+    def __init__(self, hosts=None, elasticsearch=None, config=None):
         # TODO: clean this up.  Error if both or neither are provided.
         if elasticsearch is not None:
             LOG.debug('Using provided ES instance.')
@@ -80,11 +78,13 @@ class Lumberjack(object):
             LOG.debug('Using provided hosts.')
             self.elasticsearch = Elasticsearch(hosts=hosts)
 
-        # TODO: read args from a config here.
-        self.schema_manager = SchemaManager(self.elasticsearch, index_prefix)
-        self.action_queue = ActionQueue(self.elasticsearch, index_prefix,
-                                        interval=interval,
-                                        max_queue_length=max_queue_length)
+        if config is None:
+            self.config = DEFAULT_CONFIG.copy()
+        else:
+            self.config = config
+            
+        self.schema_manager = SchemaManager(self.elasticsearch, self.config)
+        self.action_queue = ActionQueue(self.elasticsearch, self.config)
 
         self.action_queue.start()
 

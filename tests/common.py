@@ -31,32 +31,33 @@ LJ_LOGLEVEL = logging.ERROR
 LOG_FORMAT = "%(asctime)s %(name)s\t%(message)s"
 DATE_FORMAT = "%c"
 
-
 class LumberjackTestCase(unittest.TestCase):
     def setUp(self):
-        self.index_prefix = INDEX_PREFIX + str(randint(0, 2**30)) + '-'
+        self.config = lumberjack.DEFAULT_CONFIG.copy()
+        
+        self.config['index_prefix'] = (INDEX_PREFIX +
+                                       str(randint(0, 2**30)) + '-')
 
         # handler = logging.FileHandler('tests.log', mode='w')
         handler = logging.StreamHandler(stream=sys.stderr)
         formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=DATE_FORMAT)
         handler.setFormatter(formatter)
 
-        es_logger = logging.getLogger('elasticsearch')
-        es_logger.setLevel(ES_LOGLEVEL)
-        es_logger.handlers = []
-        es_logger.addHandler(handler)
+        #es_logger = logging.getLogger('elasticsearch')
+        #es_logger.setLevel(ES_LOGLEVEL)
+        #es_logger.handlers = []
+        #es_logger.addHandler(handler)
 
-        lj_logger = logging.getLogger('lumberjack')
-        lj_logger.setLevel(LJ_LOGLEVEL)
-        lj_logger.handlers = []
-        lj_logger.addHandler(handler)
+        #lj_logger = logging.getLogger('lumberjack')
+        #lj_logger.setLevel(LJ_LOGLEVEL)
+        #lj_logger.handlers = []
+        #lj_logger.addHandler(handler)
 
     def getLumberjackObject(self):
-        self.lj = lumberjack.Lumberjack(hosts=HOSTS,
-                                        index_prefix=self.index_prefix)
+        self.lj = lumberjack.Lumberjack(hosts=HOSTS, config=self.config)
         self.elasticsearch = self.lj.elasticsearch
 
     def deleteIndices(self, elasticsearch=None):
         if elasticsearch is None:
             elasticsearch = self.lj.elasticsearch
-        elasticsearch.indices.delete(index=self.index_prefix + '*')
+        elasticsearch.indices.delete(index=self.config['index_prefix'] + '*')

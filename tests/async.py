@@ -33,10 +33,12 @@ MAX_QUEUE_LENGTH = 20
 class AsyncTestCase(LumberjackTestCase):
     def setUp(self):
         super(AsyncTestCase, self).setUp()
-        self.lj = lumberjack.Lumberjack(hosts=HOSTS,
-                                        index_prefix=self.index_prefix,
-                                        interval=INTERVAL_SHORT,
-                                        max_queue_length=MAX_QUEUE_LENGTH)
+
+        our_config = self.config.copy()
+        our_config['interval'] = INTERVAL_SHORT
+        our_config['max_queue_length'] = MAX_QUEUE_LENGTH
+        
+        self.lj = lumberjack.Lumberjack(hosts=HOSTS, config=our_config)
         self.lj.register_schema(__name__, {'_source': {'enabled': True}})
         self.elasticsearch = self.lj.elasticsearch
 
@@ -45,9 +47,10 @@ class AsyncTestCase(LumberjackTestCase):
         self.deleteIndices()
 
     def test_params_passed_to_action_queue(self):
-        self.assertEqual(INTERVAL_SHORT, self.lj.action_queue.interval)
+        self.assertEqual(INTERVAL_SHORT,
+                         self.lj.action_queue.config['interval'])
         self.assertEqual(MAX_QUEUE_LENGTH,
-                         self.lj.action_queue.max_queue_length)
+                         self.lj.action_queue.config['max_queue_length'])
 
     def test_basic_flush(self):
         self.lj.action_queue.queue_index(suffix='test',
@@ -56,7 +59,7 @@ class AsyncTestCase(LumberjackTestCase):
         self.lj.trigger_flush()
         time.sleep(3)
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=__name__,
+            index=self.config['index_prefix'] + '*', doc_type=__name__,
             body={
                 'query': {
                     'match': {'message': 'testD'}
@@ -70,9 +73,9 @@ class AsyncTestCase(LumberjackTestCase):
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body={'message': 'testE'})
-        time.sleep(INTERVAL_SHORT + 1)
+        time.sleep(INTERVAL_SHORT + 3)
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=__name__,
+            index=self.config['index_prefix'] + '*', doc_type=__name__,
             body={
                 'query': {
                     'match': {'message': 'testE'}
@@ -86,7 +89,7 @@ class AsyncTestCase(LumberjackTestCase):
                                          body={'message': 'testA'})
         time.sleep(INTERVAL_SHORT + 3)
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=__name__,
+            index=self.config['index_prefix'] + '*', doc_type=__name__,
             body={
                 'query': {
                     'match': {
@@ -96,7 +99,7 @@ class AsyncTestCase(LumberjackTestCase):
             })
         self.assertEqual(res['hits']['total'], 1)
 
-        self.lj.action_queue.interval = INTERVAL_LONG
+        self.lj.action_queue.config['interval'] = INTERVAL_LONG
         self.lj.trigger_flush()
 
         # Wait for the flush to complete before adding to the queue.
@@ -114,19 +117,19 @@ class AsyncTestCase(LumberjackTestCase):
             }
         }
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=__name__,
+            index=self.config['index_prefix'] + '*', doc_type=__name__,
             body=b_query)
         self.assertEqual(res['hits']['total'], 0)
 
         time.sleep(INTERVAL_LONG)
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=__name__,
+            index=self.config['index_prefix'] + '*', doc_type=__name__,
             body=b_query)
         self.assertEqual(res['hits']['total'], 1)
 
     def test_max_queue_length(self):
         # Disable periodic flushing
-        self.lj.action_queue.interval = None
+        self.lj.action_queue.config['interval'] = None
         self.lj.trigger_flush()
 
         # Wait for flush to complete
@@ -142,7 +145,7 @@ class AsyncTestCase(LumberjackTestCase):
         # Wait for ES indexing in case the test failed and already flushed.
         time.sleep(3)
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=__name__,
+            index=self.config['index_prefix'] + '*', doc_type=__name__,
             body={
                 'query': {
                     'match': doc
@@ -156,7 +159,7 @@ class AsyncTestCase(LumberjackTestCase):
         # Wait for flush and ES indexing
         time.sleep(3)
         res = self.elasticsearch.search(
-            index=self.index_prefix + '*', doc_type=__name__,
+            index=self.config['index_prefix'] + '*', doc_type=__name__,
             body={
                 'query': {
                     'match': doc
