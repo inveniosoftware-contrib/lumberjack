@@ -18,7 +18,7 @@ Documentation
 Documentation is available at <http://lumberjack.readthedocs.org/>, but can
 also be built using Sphinx::
 
-    cd docs/ && make html
+    sphinx-build -qnNW docs docs/_build/html
 
 Testing
 =======
@@ -30,4 +30,4 @@ easily switch between them.)
 
 To run the tests themselves, you should run::
 
-    python run_tests.py
+    ./run_tests.sh
