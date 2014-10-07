@@ -6,7 +6,17 @@ Developers
 Licence
 -------
 
-Lumberjack is licensed under the GPLv3.
+Lumberjack is licensed under the GNU LGPL, which is a set of permissions
+additional to the GNU GPL.
 
-.. include:: ../LICENSE
+The GNU GPL
+^^^^^^^^^^^
+
+.. include:: ../COPYING
+    :literal:
+
+The GNU LGPL
+^^^^^^^^^^^^
+
+.. include:: ../COPYING.LESSER
     :literal:
