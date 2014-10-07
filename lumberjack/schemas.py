@@ -37,21 +37,11 @@ class SchemaManager(object):
     :param elasticsearch: The ``elasticsearch.Elasticsearch`` object to
         register mappings and templates with.
 
-    :param index_prefix: The the prefix of the Elasticsearch indices.
-
-    :param default_base_mapping: The basis for mappings inserted into
-        Elasticsearch templates.  When you register a schema, it is applied on
-        top of this basis.
-
-    :param default_types_properties: The default attributes given to various
-        types when a mapping is generated.
-
-    :param default_index_settings: The settings under which new indices are
-        created.  E.g. containing ``number_of_shards`` etc.
+    :param config: The Lumberjack config.  See the Configuration section in the
+        docs for details.
 
     """
 
-    # TODO: update docs
     def __init__(self, elasticsearch, config):
         self.elasticsearch = elasticsearch
         self.schemas = {}

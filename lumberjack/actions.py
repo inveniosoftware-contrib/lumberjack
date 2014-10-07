@@ -53,14 +53,8 @@ class ActionQueue(Thread):
     :param elasticsearch: The ``elasticsearch.Elasticsearch`` object on which
         to perform the bulk indexing.
 
-    :param index_prefix: The prefix of the indices to be created in
-        Elasticsearch.
-
-    :param max_queue_length: The maximum length the queue can reach before a
-        flush is triggered automaticall.
-
-    :param interval: The maximum time that can elapse between automatic
-        flushes.
+    :param config: The Lumberjack config.  See the Configuration section in the
+        docs for details.
 
     """
 

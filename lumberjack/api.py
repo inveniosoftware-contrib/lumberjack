@@ -47,25 +47,19 @@ class Lumberjack(object):
     You should provide either a list of Elasticsearch hosts, or an
     already-instantiated ``Elasticsearch`` object from elasticsearch-py.
 
-    :param index_prefix: A prefix for the created indices in Elasticsearch.
-
     :param hosts: A list of Elasticsearch nodes to connect to, in the form
         ``[{'host': '127.0.0.1', 'port': 9200}]``.  This is passed directly to
         elasticsearch.Elasticsearch.
 
-    :param elasticsearch: An already-instantiated
+    :param elasticsearch: As an alternative to hosts, an already-instantiated
         ``elasticsearch.Elasticsearch`` object, perhaps with custom transports
         etc.
 
-    :param interval: A number of seconds between calls to flush the queue of
-        log entries.
-
-    :param max_queue_length: The maximum length that the queue of log entries
-        is allowed to grow to before being flushed.
+    :param config: A configuration for Lumberjack.  See the Configuration
+        section in the docs for details.
 
     """
 
-    # TODO: update docs
     def __init__(self, hosts=None, elasticsearch=None, config=None):
         # TODO: clean this up.  Error if both or neither are provided.
         if elasticsearch is not None:
