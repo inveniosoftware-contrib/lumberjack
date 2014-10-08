@@ -21,6 +21,7 @@ import sys
 import unittest
 import lumberjack
 from random import randint
+from elasticsearch import NotFoundError
 
 HOSTS = [{'host': 'localhost', 'port': 9199}]
 INDEX_PREFIX = 'test-lumberjack-'
@@ -31,11 +32,13 @@ LOG_FORMAT = "%(asctime)s %(name)s\t%(message)s"
 DATE_FORMAT = "%c"
 
 class LumberjackTestCase(unittest.TestCase):
-    def setUp(self):
-        self.config = lumberjack.DEFAULT_CONFIG.copy()
-        
-        self.config['index_prefix'] = (INDEX_PREFIX +
-                                       str(randint(0, 2**30)) + '-')
+    def setUp(self, config=None):
+        if config is None:
+            self.config = lumberjack.DEFAULT_CONFIG.copy()        
+            self.config['index_prefix'] = (INDEX_PREFIX +
+                                           str(randint(0, 2**30)) + '-')
+        else:
+            self.config = config
 
         # handler = logging.FileHandler('tests.log', mode='w')
         handler = logging.StreamHandler(stream=sys.stderr)
@@ -60,3 +63,8 @@ class LumberjackTestCase(unittest.TestCase):
         if elasticsearch is None:
             elasticsearch = self.lj.elasticsearch
         elasticsearch.indices.delete(index=self.config['index_prefix'] + '*')
+        try:
+            elasticsearch.indices.delete_template(
+                name=self.config['index_prefix'] + '*')
+        except NotFoundError:
+            pass
