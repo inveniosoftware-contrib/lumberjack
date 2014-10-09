@@ -22,6 +22,7 @@ import unittest
 import lumberjack
 from random import randint
 from elasticsearch import NotFoundError
+import time
 
 HOSTS = [{'host': 'localhost', 'port': 9199}]
 INDEX_PREFIX = 'test-lumberjack-'
@@ -30,6 +31,8 @@ LJ_LOGLEVEL = logging.ERROR
 
 LOG_FORMAT = "%(asctime)s %(name)s\t%(message)s"
 DATE_FORMAT = "%c"
+
+MOCK = True
 
 class LumberjackTestCase(unittest.TestCase):
     def setUp(self, config=None):
@@ -55,16 +58,36 @@ class LumberjackTestCase(unittest.TestCase):
         #lj_logger.handlers = []
         #lj_logger.addHandler(handler)
 
+    def tearDown(self):
+        self.deleteIndices()
+        if hasattr(self, 'lj'):
+            for _ in range(0, 20):
+                with self.lj.action_queue.queue_lock:
+                    if self.lj.action_queue.queue == []:
+                        break
+                time.sleep(0.1)
+            if self.lj.action_queue.last_exception is not None:
+                raise self.lj.action_queue.last_exception
+
     def getLumberjackObject(self):
         self.lj = lumberjack.Lumberjack(hosts=HOSTS, config=self.config)
         self.elasticsearch = self.lj.elasticsearch
 
+        if MOCK:
+            def noop(*args, **kwargs):
+                pass
+            self.lj.action_queue.bulk = noop
+            self.elasticsearch.indices.put_mapping = noop
+            self.elasticsearch.indices.put_template = noop
+
     def deleteIndices(self, elasticsearch=None):
-        if elasticsearch is None:
-            elasticsearch = self.lj.elasticsearch
-        elasticsearch.indices.delete(index=self.config['index_prefix'] + '*')
-        try:
-            elasticsearch.indices.delete_template(
-                name=self.config['index_prefix'] + '*')
-        except NotFoundError:
-            pass
+        if not MOCK:
+            if elasticsearch is None:
+                elasticsearch = self.lj.elasticsearch
+            elasticsearch.indices.delete(
+                index=self.config['index_prefix'] + '*')
+            try:
+                elasticsearch.indices.delete_template(
+                    name=self.config['index_prefix'] + '*')
+            except NotFoundError:
+                pass

@@ -66,8 +66,11 @@ class ActionQueue(Thread):
         self.queue = []
         self.flush_event = Event()
         self.queue_lock = Lock()
+        self.last_exception = None
 
         self.daemon = True
+        # So we can monkey-patch this in testing
+        self.bulk = bulk
 
     def _flush(self):
         """Perform all actions in the queue.
@@ -82,7 +85,7 @@ class ActionQueue(Thread):
         self.queue_lock.release()
 
         try:
-            bulk(self.elasticsearch, queue)
+            self.bulk(self.elasticsearch, queue)
         except TransportError as exception:
             LOG.error('Error in flushing queue.  Lost %d logs', len(queue),
                       exc_info=exception)
@@ -104,6 +107,7 @@ class ActionQueue(Thread):
                 traceback.print_exc(exc)
             except Exception as exc:
                 LOG.error('Action queue thread terminated unexpectedly.')
+                self.last_exception = exc
                 raise
 
     # These two methods to be called externally, i.e. from the main thread.

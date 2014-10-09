@@ -22,7 +22,7 @@ import time
 
 import lumberjack
 
-from .common import LumberjackTestCase, HOSTS
+from .common import LumberjackTestCase, HOSTS, MOCK
 
 INTERVAL_SHORT = 2
 INTERVAL_LONG = 10*INTERVAL_SHORT
@@ -33,17 +33,12 @@ class AsyncTestCase(LumberjackTestCase):
     def setUp(self):
         super(AsyncTestCase, self).setUp()
 
-        our_config = self.config.copy()
-        our_config['interval'] = INTERVAL_SHORT
-        our_config['max_queue_length'] = MAX_QUEUE_LENGTH
+        self.config['interval'] = INTERVAL_SHORT
+        self.config['max_queue_length'] = MAX_QUEUE_LENGTH
         
-        self.lj = lumberjack.Lumberjack(hosts=HOSTS, config=our_config)
+        self.getLumberjackObject()
         self.lj.register_schema(__name__, {'_source': {'enabled': True}})
         self.elasticsearch = self.lj.elasticsearch
-
-    def tearDown(self):
-        super(AsyncTestCase, self).tearDown()
-        self.deleteIndices()
 
     def test_params_passed_to_action_queue(self):
         self.assertEqual(INTERVAL_SHORT,
@@ -52,51 +47,98 @@ class AsyncTestCase(LumberjackTestCase):
                          self.lj.action_queue.config['max_queue_length'])
 
     def test_basic_flush(self):
+        if MOCK:
+            def mock_bulk_f(es, actions):
+                self.assertEqual(es, self.elasticsearch)
+                if len(actions) == 0:
+                    return
+                self.assertEqual(len(actions), 1)
+                action = actions[0]
+
+                self.assertEqual(action['_type'], __name__)
+                self.assertEqual(action['_index'],
+                                 self.config['index_prefix'] + 'test')
+                self.assertEqual(action['_source'], {'message': 'testD'})
+
+            self.lj.action_queue.bulk = mock_bulk_f
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body={'message': 'testD'})
         self.lj.trigger_flush()
-        time.sleep(3)
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=__name__,
-            body={
-                'query': {
-                    'match': {'message': 'testD'}
-                }
-            })
-        self.assertEqual(res['hits']['total'], 1)
+
+        if not MOCK:
+            time.sleep(3)
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=__name__,
+                body={
+                    'query': {
+                        'match': {'message': 'testD'}
+                    }
+                })
+            self.assertEqual(res['hits']['total'], 1)
 
     def test_basic_timeouts(self):
+        if MOCK:
+            actions_list = []
+            def mock_bulk_f(es, actions):
+                actions_list.extend(actions)
+
+            self.lj.action_queue.bulk = mock_bulk_f
         self.lj.trigger_flush()
         time.sleep(1)
+
+        if MOCK:
+            self.assertEqual(len(actions_list), 0)
+
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body={'message': 'testE'})
         time.sleep(INTERVAL_SHORT + 3)
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=__name__,
-            body={
-                'query': {
-                    'match': {'message': 'testE'}
-                }
-            })
-        self.assertEqual(res['hits']['total'], 1)
+
+        if MOCK:
+            self.assertEqual(len(actions_list), 1)
+            self.assertEqual(actions_list[0]['_source'], {'message': 'testE'})
+        else:
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=__name__,
+                body={
+                    'query': {
+                        'match': {'message': 'testE'}
+                    }
+                })
+            self.assertEqual(res['hits']['total'], 1)
 
     def test_change_update_interval(self):
+        if MOCK:
+            actions_list = []
+            def mock_bulk_f(es, actions):
+                actions_list.extend(actions)
+
+            self.lj.action_queue.bulk = mock_bulk_f
+
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body={'message': 'testA'})
         time.sleep(INTERVAL_SHORT + 3)
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=__name__,
-            body={
-                'query': {
-                    'match': {
-                        'message': 'testA'
+
+        if not MOCK:
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=__name__,
+                body={
+                    'query': {
+                        'match': {
+                            'message': 'testA'
+                        }
                     }
-                }
-            })
-        self.assertEqual(res['hits']['total'], 1)
+                })
+            self.assertEqual(res['hits']['total'], 1)
+        else:
+            self.assertEqual(len(actions_list), 1)
+            self.assertDictContainsSubset(
+                {'_source': {'message': 'testA'},
+                 '_type': __name__,
+                 '_index': self.config['index_prefix'] + 'test'},
+                actions_list[-1])
 
         self.lj.action_queue.config['interval'] = INTERVAL_LONG
         self.lj.trigger_flush()
@@ -115,18 +157,39 @@ class AsyncTestCase(LumberjackTestCase):
                 }
             }
         }
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=__name__,
-            body=b_query)
-        self.assertEqual(res['hits']['total'], 0)
+
+        # Should not have been procesed yet.
+        if not MOCK:
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=__name__,
+                body=b_query)
+            self.assertEqual(res['hits']['total'], 0)
+        else:
+            self.assertEqual(len(actions_list), 1)
 
         time.sleep(INTERVAL_LONG)
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=__name__,
-            body=b_query)
-        self.assertEqual(res['hits']['total'], 1)
+
+        if not MOCK:
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=__name__,
+                body=b_query)
+            self.assertEqual(res['hits']['total'], 1)
+        else:
+            self.assertEqual(len(actions_list), 2)
+            self.assertDictContainsSubset(
+                {'_source': {'message': 'testB'},
+                 '_type': __name__,
+                 '_index': self.config['index_prefix'] + 'test'},
+                actions_list[-1])
 
     def test_max_queue_length(self):
+        if MOCK:
+            actions_list = []
+            def mock_bulk_f(es, actions):
+                actions_list.extend(actions)
+
+            self.lj.action_queue.bulk = mock_bulk_f
+
         # Disable periodic flushing
         self.lj.action_queue.config['interval'] = None
         self.lj.trigger_flush()
@@ -143,25 +206,33 @@ class AsyncTestCase(LumberjackTestCase):
                                              body=doc)
         # Wait for ES indexing in case the test failed and already flushed.
         time.sleep(3)
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=__name__,
-            body={
-                'query': {
-                    'match': doc
-                }
-            })
-        self.assertEqual(res['hits']['total'], 0)
+
+        if not MOCK:
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=__name__,
+                body={
+                    'query': {
+                        'match': doc
+                    }
+                })
+            self.assertEqual(res['hits']['total'], 0)
+        else:
+            self.assertEqual(len(actions_list), 0)
 
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body=doc)
         # Wait for flush and ES indexing
         time.sleep(3)
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=__name__,
-            body={
-                'query': {
-                    'match': doc
-                }
-            })
-        self.assertEqual(res['hits']['total'], MAX_QUEUE_LENGTH)
+
+        if not MOCK:
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=__name__,
+                body={
+                    'query': {
+                        'match': doc
+                    }
+                })
+            self.assertEqual(res['hits']['total'], MAX_QUEUE_LENGTH)
+        else:
+            self.assertEqual(len(actions_list), MAX_QUEUE_LENGTH)

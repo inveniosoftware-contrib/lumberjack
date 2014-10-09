@@ -27,7 +27,7 @@ import sys
 import time
 from random import randint
 
-from .common import LumberjackTestCase
+from .common import LumberjackTestCase, MOCK
 
 LOGGER_NAME = 'test'
 LOGGER_CHILD_NAME = 'test.child'
@@ -46,7 +46,7 @@ class LogTestCase(LumberjackTestCase):
 
     def tearDown(self):
         self.logger.handlers = []
-        self.deleteIndices()
+        super(LogTestCase, self).tearDown()
 
     def test_log_not_dynamic(self):
         schema = {
@@ -68,47 +68,73 @@ class LogTestCase(LumberjackTestCase):
                 }
             }
         }
-        self.lj.register_schema(schema=schema, logger=LOGGER_NAME)
+
+        # We're not testing schemas here anyway.
+        if not MOCK:
+            self.lj.register_schema(schema=schema, logger=LOGGER_NAME)
+
         self._test_log(log_dict={
             'a': 'mice rice right across the page',
             'b': 24
         })
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=LOGGER_NAME,
-            body={
-                'query': {
-                    'match': {
-                        'a': 'rice'
+
+        # If we're running in mock, assume we catch anything wrong in the mock
+        # bulk function.
+        if not MOCK:
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=LOGGER_NAME,
+                body={
+                    'query': {
+                        'match': {
+                            'a': 'rice'
+                        }
                     }
-                }
-            })
-        self.assertEqual(res['hits']['total'], 1)
+                })
+            self.assertEqual(res['hits']['total'], 1)
 
     def test_log_dynamic(self):
         self._test_log()
 
     def _test_log(self, level=logging.ERROR, log_dict={'a': 1, 'b': 2}):
+        if MOCK:
+            def mock_bulk_f(es, actions):
+                self.assertEqual(es, self.elasticsearch)
+                self.assertEqual(len(actions), 1)
+
+                action = actions[0]
+                self.assertEqual(action['_type'], LOGGER_NAME)
+                self.assertEqual(action['_op_type'], 'index')
+                self.assertTrue(
+                    action['_index'].startswith(self.config['index_prefix']))
+                self.assertDictContainsSubset(log_dict, action['_source'])
+
+            self.lj.action_queue.bulk = mock_bulk_f
+
         self.logger.log(level, log_dict)
 
-        # Blocking flush
+        # Blocking flush.  This brings assertions into the main thread.
         self.lj.action_queue._flush()
 
-        # ES is *near*-realtime
-        time.sleep(2)
+        # If we're running in mock, assume we catch anything wrong in the mock
+        # bulk function.
 
-        musts = []
-        # Build query
-        for (k, v) in log_dict.items():
-            musts.append({'match': {k: v}})
-        musts.append({'match': {'level': level}})
+        if not MOCK:
+            # ES is *near*-realtime
+            time.sleep(2)
 
-        res = self.elasticsearch.search(
-            index=self.config['index_prefix'] + '*', doc_type=LOGGER_NAME,
-            body={
-                'query': {
-                    'bool': {
-                        'must': musts
+            musts = []
+            # Build query
+            for (k, v) in log_dict.items():
+                musts.append({'match': {k: v}})
+            musts.append({'match': {'level': level}})
+
+            res = self.elasticsearch.search(
+                index=self.config['index_prefix'] + '*', doc_type=LOGGER_NAME,
+                body={
+                    'query': {
+                        'bool': {
+                            'must': musts
+                        }
                     }
-                }
-            })
-        self.assertGreater(res['hits']['total'], 0)
+                })
+            self.assertGreater(res['hits']['total'], 0)

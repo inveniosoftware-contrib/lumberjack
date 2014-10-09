@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 import unittest
-from .common import LumberjackTestCase
+from .common import LumberjackTestCase, MOCK
 
 import lumberjack
 
@@ -50,9 +50,6 @@ SCHEMA_A = {
 
 
 class SchemaTestCase(LumberjackTestCase):
-    def tearDown(self):
-        self.deleteIndices()
-
     def test_build_mappings_a(self):
         self.getLumberjackObject()
         self.lj.schema_manager.schemas['type_a'] = SCHEMA_A
@@ -144,13 +141,33 @@ class SchemaTestCase(LumberjackTestCase):
 
     def test_register_schema(self):
         self.getLumberjackObject()
+
+        if MOCK:
+            def mock_put_template_f(name, body):
+                self.assertEqual(name, self.config['index_prefix'] + '*')
+                self.assertEqual(body['template'],
+                                 self.config['index_prefix'] + '*')
+                self.assertEqual(body['settings'],
+                                 self.config['default_index_settings'])
+                self.assertEqual(body['mappings'],
+                                 self.lj.schema_manager._build_mappings())
+
+            def mock_put_mapping_f(index, body, doc_type):
+                self.assertEqual(
+                    body,
+                    self.lj.schema_manager._build_mappings()[doc_type])
+
+            self.elasticsearch.indices.put_template = mock_put_template_f
+            self.elasticsearch.indices.put_mapping = mock_put_mapping_f
+
         self.lj.register_schema('type_a', SCHEMA_A)
 
-        # Test it's now in ES.
-        res = self.elasticsearch.indices.get_template(
-            name=self.config['index_prefix'] + '*')
+        # Test it's now in ES, unles we're in mock.
+        if not MOCK:
+            res = self.elasticsearch.indices.get_template(
+                name=self.config['index_prefix'] + '*')
 
-        expected_schema = self.lj.schema_manager._build_mappings()['type_a']
+            expected_schema = self.lj.schema_manager._build_mappings()['type_a']
 
-        self.assertEqual(res[self.config['index_prefix'] + '*'] \
+            self.assertEqual(res[self.config['index_prefix'] + '*'] \
                          ['mappings']['type_a'], expected_schema)
