@@ -60,6 +60,7 @@ class Lumberjack(object):
     """
 
     def __init__(self, hosts=None, elasticsearch=None, config=None):
+        """Init method.  See class docstring."""
         # TODO: clean this up.  Error if both or neither are provided.
         if elasticsearch is not None:
             LOG.debug('Using provided ES instance.')

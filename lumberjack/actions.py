@@ -58,6 +58,7 @@ class ActionQueue(Thread):
     """
 
     def __init__(self, elasticsearch, config):
+        """Init method.  See class docstring."""
         super(ActionQueue, self).__init__()
 
         self.elasticsearch = elasticsearch
@@ -94,6 +95,11 @@ class ActionQueue(Thread):
             self.flush_event.clear()
 
     def run(self):
+        """The main method for the ActionQueue thread.
+
+        Called by the ``start()`` method.  Not to be called directly.
+
+        """
         while True:
             try:
                 self._flush()

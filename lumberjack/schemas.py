@@ -42,6 +42,7 @@ class SchemaManager(object):
     """
 
     def __init__(self, elasticsearch, config):
+        """Init method.  See class docstring."""
         self.elasticsearch = elasticsearch
         self.schemas = {}
 
