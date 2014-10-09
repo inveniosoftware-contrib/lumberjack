@@ -44,6 +44,9 @@ setup(
     install_requires=[
         'elasticsearch',
     ],
+    extras_require={
+        "docs": "sphinx"
+    },
     classifiers=[
         'Environment :: Plugins',
         'Intended Audience :: Developers',
