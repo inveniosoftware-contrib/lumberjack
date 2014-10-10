@@ -95,10 +95,15 @@ class LogTestCase(LumberjackTestCase):
     def test_log_dynamic(self):
         self._test_log()
 
+    def test_log_message(self):
+        self._test_log(log_dict='a message')
+
     def _test_log(self, level=logging.ERROR, log_dict={'a': 1, 'b': 2}):
         if MOCK:
             def mock_bulk_f(es, actions):
                 self.assertEqual(es, self.elasticsearch)
+                if len(actions) == 0:
+                    return
                 self.assertEqual(len(actions), 1)
 
                 action = actions[0]
@@ -106,7 +111,10 @@ class LogTestCase(LumberjackTestCase):
                 self.assertEqual(action['_op_type'], 'index')
                 self.assertTrue(
                     action['_index'].startswith(self.config['index_prefix']))
-                self.assertDictContainsSubset(log_dict, action['_source'])
+                if type(log_dict) == str:
+                    self.assertEqual(action['_source']['message'], log_dict)
+                else:
+                    self.assertDictContainsSubset(log_dict, action['_source'])
 
             self.lj.action_queue.bulk = mock_bulk_f
 
@@ -122,11 +130,14 @@ class LogTestCase(LumberjackTestCase):
             # ES is *near*-realtime
             time.sleep(2)
 
-            musts = []
-            # Build query
-            for (k, v) in log_dict.items():
-                musts.append({'match': {k: v}})
-            musts.append({'match': {'level': level}})
+            if type(log_dict) == str:
+                musts = {'match': {'message': log_dict}}
+            else:
+                musts = []
+                # Build query
+                for (k, v) in log_dict.items():
+                    musts.append({'match': {k: v}})
+                musts.append({'match': {'level': level}})
 
             res = self.elasticsearch.search(
                 index=self.config['index_prefix'] + '*', doc_type=LOGGER_NAME,

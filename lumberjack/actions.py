@@ -68,6 +68,7 @@ class ActionQueue(Thread):
         self.flush_event = Event()
         self.queue_lock = Lock()
         self.last_exception = None
+        self.running = True
 
         self.daemon = True
         # So we can monkey-patch this in testing
@@ -100,7 +101,7 @@ class ActionQueue(Thread):
         Called by the ``start()`` method.  Not to be called directly.
 
         """
-        while True:
+        while self.running or (len(self.queue) > 0):
             try:
                 self._flush()
                 interval = self.config['interval']

@@ -19,6 +19,9 @@
 from __future__ import absolute_import
 import unittest
 import time
+from testfixtures import log_capture
+import elasticsearch
+import logging
 
 import lumberjack
 
@@ -236,3 +239,42 @@ class AsyncTestCase(LumberjackTestCase):
             self.assertEqual(res['hits']['total'], MAX_QUEUE_LENGTH)
         else:
             self.assertEqual(len(actions_list), MAX_QUEUE_LENGTH)
+
+    @log_capture('lumberjack.actions', level=logging.ERROR)
+    def test_transport_error(self, log):
+        self.getLumberjackObject()
+        def mock_bulk_f(es, actions):
+            raise elasticsearch.TransportError()
+        self.lj.action_queue.bulk = mock_bulk_f
+        with self.lj.action_queue.queue_lock:
+            self.lj.action_queue.queue.append(None)
+
+        self.lj.trigger_flush()
+        self.lj.action_queue.running = False
+        self.lj.action_queue.join()
+
+        log.check(
+            ('lumberjack.actions', 'ERROR',
+             'Error in flushing queue.  Lost 1 logs'))
+
+    @log_capture('lumberjack.actions', level=logging.ERROR)
+    def test_general_error(self, log):
+        self.getLumberjackObject()
+        class TestException(Exception):
+            pass
+        def mock_bulk_f(es, actions):
+            raise TestException()
+
+        self.lj.action_queue.bulk = mock_bulk_f
+
+        self.lj.trigger_flush()
+        self.lj.action_queue.join(timeout=0.5)
+        self.assertFalse(self.lj.action_queue.is_alive())
+
+        self.assertEquals(type(self.lj.action_queue.last_exception),
+                          TestException)
+        self.lj.action_queue.last_exception = None
+
+        log.check(
+            ('lumberjack.actions', 'ERROR',
+             'Action queue thread terminated unexpectedly.'))

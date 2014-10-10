@@ -58,27 +58,23 @@ class LumberjackTestCase(unittest.TestCase):
         #lj_logger.handlers = []
         #lj_logger.addHandler(handler)
 
-    def tearDown(self):
+        self.addCleanup(self.cleanup)
+
+    def cleanup(self):
         self.deleteIndices()
         if hasattr(self, 'lj'):
-            for _ in range(0, 20):
-                with self.lj.action_queue.queue_lock:
-                    if self.lj.action_queue.queue == []:
-                        break
-                time.sleep(0.1)
+            self.lj.action_queue.running = False
+            self.lj.interval = 0
+            self.lj.action_queue.trigger_flush()
+            self.lj.action_queue.join()
             if self.lj.action_queue.last_exception is not None:
                 raise self.lj.action_queue.last_exception
 
     def getLumberjackObject(self):
         self.lj = lumberjack.Lumberjack(hosts=HOSTS, config=self.config)
         self.elasticsearch = self.lj.elasticsearch
-
         if MOCK:
-            def noop(*args, **kwargs):
-                pass
-            self.lj.action_queue.bulk = noop
-            self.elasticsearch.indices.put_mapping = noop
-            self.elasticsearch.indices.put_template = noop
+            patchLumberjackObject(self.lj)
 
     def deleteIndices(self, elasticsearch=None):
         if not MOCK:
@@ -91,3 +87,11 @@ class LumberjackTestCase(unittest.TestCase):
                     name=self.config['index_prefix'] + '*')
             except NotFoundError:
                 pass
+
+
+def patchLumberjackObject(lj):
+    def noop(*args, **kwargs):
+        pass
+    lj.action_queue.bulk = noop
+    lj.elasticsearch.indices.put_mapping = noop
+    lj.elasticsearch.indices.put_template = noop

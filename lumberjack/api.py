@@ -66,8 +66,7 @@ class Lumberjack(object):
             LOG.debug('Using provided ES instance.')
             self.elasticsearch = elasticsearch
         elif hosts is None:
-            LOG.warn('No Elasticsearch config specified. ' +
-                     'This is very probably a bad idea.')
+            raise TypeError('You must provide either hosts or elasticsearch.')
         else:
             LOG.debug('Using provided hosts.')
             self.elasticsearch = Elasticsearch(hosts=hosts)

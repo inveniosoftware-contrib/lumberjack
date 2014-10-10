@@ -63,5 +63,5 @@ setup(
         'Development Status :: 3 - Alpha',
     ],
     test_suite='nose.collector',
-    tests_require=['nose', 'coverage'],
+    tests_require=['nose', 'coverage', 'testfixtures'],
 )
