@@ -28,7 +28,7 @@ with open(os.path.join('lumberjack', 'version.py'), 'rt') as f:
     ).group('version')
 
 setup(
-    name='Lumberjack',
+    name='lumberjack',
     version=version,
     url='http://github.com/jmacmahon/lumberjack',
     license='GPL',
