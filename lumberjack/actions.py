@@ -101,7 +101,9 @@ class ActionQueue(Thread):
         Called by the ``start()`` method.  Not to be called directly.
 
         """
-        while self.running or (len(self.queue) > 0):
+        caught_exception = False
+        while ((not caught_exception) and
+               (self.running or len(self.queue) > 0)):
             try:
                 self._flush()
                 interval = self.config['interval']
@@ -115,7 +117,7 @@ class ActionQueue(Thread):
             except Exception as exc:
                 LOG.error('Action queue thread terminated unexpectedly.')
                 self.last_exception = exc
-                raise
+                caught_exception = True
 
     # These two methods to be called externally, i.e. from the main thread.
     # TODO: Consider refactoring.

@@ -89,6 +89,23 @@ class LumberjackTestCase(unittest.TestCase):
                 pass
 
 
+class TestHandler(logging.Handler):
+            def __init__(self):
+                super(TestHandler, self).__init__()
+                self.records = []
+
+            def emit(self, record):
+                self.format(record)
+                self.records.append(record)
+
+            def assertLastLog(self, name, levelname, message):
+                assert len(self.records) > 0
+                last_record = self.records[-1]
+                assert last_record.name == name
+                assert last_record.levelname == levelname
+                assert last_record.message == message
+
+
 def patchLumberjackObject(lj):
     def noop(*args, **kwargs):
         pass
