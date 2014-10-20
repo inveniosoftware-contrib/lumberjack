@@ -48,11 +48,25 @@ SCHEMA_A = {
     }
 }
 
+SCHEMA_B = {
+    '_source': {'enabled': False},
+    '_ttl': {'enabled': False},
+    'properties': {
+        'c': {
+            'type': 'string'
+        },
+        'd': {
+            'type': 'ip'
+        }
+    }
+}
+
 
 class SchemaTestCase(LumberjackTestCase):
-    def test_build_mappings_a(self):
+    def test_build_mappings(self):
         self.getLumberjackObject()
         self.lj.schema_manager.schemas['type_a'] = SCHEMA_A
+        self.lj.schema_manager.schemas['type_b'] = SCHEMA_B
         expected_mapping_a = {
             'dynamic': 'strict',
             '_source': {'enabled': True},
@@ -87,8 +101,35 @@ class SchemaTestCase(LumberjackTestCase):
                 }
             }
         }
-        self.assertEqual(self.lj.schema_manager._build_mappings()['type_a'],
-                         expected_mapping_a)
+        expected_mapping_b = {
+            '_source': {'enabled': False},
+            '_all': {'enabled': False},
+            '_ttl': {'enabled': False},
+            'properties': {
+                'message': {
+                    'type': 'string',
+                    'index': 'not_analyzed',
+                    'norms': {'enabled': False}
+                },
+                '@timestamp': {
+                    'type': 'date',
+                    'format': 'dateOptionalTime'
+                },
+                'level': {'type': 'integer'},
+                'c': {
+                    'type': 'string',
+                    'index': 'not_analyzed',
+                    'norms': {'enabled': False}
+                },
+                'd': {
+                    'type': 'ip'
+                }
+            }
+        }
+        self.maxDiff = None
+        mappings = self.lj.schema_manager._build_mappings()
+        self.assertEqual(mappings['type_a'], expected_mapping_a)
+        self.assertEqual(mappings['type_b'], expected_mapping_b)
 
     def test_build_mappings_non_default(self):
         self.config['default_mapping'] = {
