@@ -22,6 +22,7 @@ from __future__ import absolute_import
 
 import logging
 from elasticsearch import NotFoundError
+from copy import deepcopy
 
 class SchemaManager(object):
 
@@ -97,8 +98,8 @@ class SchemaManager(object):
         """Parse the schemas into Elasticsearch mappings."""
         mappings = {}
         for (type_name, schema) in self.schemas.items():
-            this_mapping = self.config['default_mapping'].copy()
-            working_schema = schema.copy()
+            this_mapping = deepcopy(self.config['default_mapping'])
+            working_schema = deepcopy(schema)
 
             # Combine the unprocessed properties into this_mapping.
             if 'properties' in working_schema:

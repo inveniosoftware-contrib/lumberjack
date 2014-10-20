@@ -20,6 +20,7 @@
 
 import logging
 import time
+from copy import deepcopy
 
 
 class ElasticsearchFormatter(logging.Formatter):
@@ -44,7 +45,7 @@ class ElasticsearchFormatter(logging.Formatter):
         if not type(record.msg) == dict:
             es_document = {'message': record.msg}
         else:
-            es_document = record.msg.copy()
+            es_document = deepcopy(record.msg)
 
         es_document['@timestamp'] = record.created
         es_document['level'] = record.levelno

@@ -27,6 +27,7 @@ from .actions import ActionQueue
 from .config import DEFAULT_CONFIG
 
 import logging
+from copy import deepcopy
 
 LOG = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ class Lumberjack(object):
             self.elasticsearch = Elasticsearch(hosts=hosts)
 
         if config is None:
-            self.config = DEFAULT_CONFIG.copy()
+            self.config = deepcopy(DEFAULT_CONFIG)
         else:
             self.config = config
             
