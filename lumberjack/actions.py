@@ -26,9 +26,6 @@ from threading import Thread, Event, Lock
 import traceback
 import logging
 
-LOG = logging.getLogger(__name__)
-
-
 class ActionQueue(Thread):
 
     """Hold a queue of actions and a thread to bulk-perform them.
@@ -69,6 +66,7 @@ class ActionQueue(Thread):
         self.queue_lock = Lock()
         self.last_exception = None
         self.running = True
+        self.logger = logging.getLogger(__name__)
 
         self.daemon = True
         # So we can monkey-patch this in testing
@@ -89,10 +87,12 @@ class ActionQueue(Thread):
         try:
             self.bulk(self.elasticsearch, queue)
         except TransportError as exception:
-            LOG.error('Error in flushing queue.  Lost %d logs', len(queue),
-                      exc_info=exception)
+            self.logger.error('Error in flushing queue.  Lost %d logs',
+                              len(queue),
+                              exc_info=exception)
         else:
-            LOG.debug('Flushed %d logs into Elasticsearch.', len(queue))
+            self.logger.debug('Flushed %d logs into Elasticsearch.',
+                              len(queue))
             self.flush_event.clear()
 
     def run(self):
@@ -109,13 +109,15 @@ class ActionQueue(Thread):
                 interval = self.config['interval']
                 triggered = self.flush_event.wait(interval)
                 if triggered:
-                    LOG.debug('Flushing on external trigger.')
+                    self.logger.debug('Flushing on external trigger.')
                 else:
-                    LOG.debug('Flushing after timeout of %.1fs.', interval)
+                    self.logger.debug(
+                        'Flushing after timeout of %.1fs.', interval)
             except ElasticsearchException as exc:
                 traceback.print_exc(exc)
             except Exception as exc:
-                LOG.error('Action queue thread terminated unexpectedly.')
+                self.logger.error(
+                    'Action queue thread terminated unexpectedly.')
                 self.last_exception = exc
                 caught_exception = True
 
@@ -132,7 +134,7 @@ class ActionQueue(Thread):
         switched to by the Python interpreter.
 
         """
-        LOG.debug('Flush triggered; setting event object.')
+        self.logger.debug('Flush triggered; setting event object.')
         self.flush_event.set()
 
     def queue_index(self, suffix, doc_type, body):
@@ -162,12 +164,13 @@ class ActionQueue(Thread):
         self.queue.append(action)
         self.queue_lock.release()
 
-        LOG.debug('Put an action in the queue. qlen = %d, doc_type = %s',
-                  len(self.queue), doc_type)
+        self.logger.debug(
+            'Put an action in the queue. qlen = %d, doc_type = %s',
+            len(self.queue), doc_type)
 
         # TODO: do default schema
 
         if self.config['max_queue_length'] is not None and \
                 len(self.queue) >= self.config['max_queue_length']:
-            LOG.debug('Hit max_queue_length.')
+            self.logger.debug('Hit max_queue_length.')
             self.trigger_flush()
