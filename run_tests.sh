@@ -17,5 +17,6 @@
 # along with Lumberjack.  If not, see <http://www.gnu.org/licenses/>.
 
 pep257 lumberjack
+pep8 lumberjack
 sphinx-build -qnNW docs docs/_build/html
 python setup.py test -s tests

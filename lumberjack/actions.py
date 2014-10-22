@@ -26,6 +26,7 @@ from threading import Thread, Event, Lock
 import traceback
 import logging
 
+
 class ActionQueue(Thread):
 
     """Hold a queue of actions and a thread to bulk-perform them.

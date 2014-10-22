@@ -76,7 +76,7 @@ class Lumberjack(object):
             self.config = deepcopy(DEFAULT_CONFIG)
         else:
             self.config = config
-            
+
         self.schema_manager = SchemaManager(self.elasticsearch, self.config)
         self.action_queue = ActionQueue(self.elasticsearch, self.config)
 

@@ -24,6 +24,7 @@ import logging
 from elasticsearch import NotFoundError
 from copy import deepcopy
 
+
 class SchemaManager(object):
 
     """Manage the 'schemas' for different types of log data.
@@ -96,6 +97,9 @@ class SchemaManager(object):
 
     def _build_mappings(self):
         """Parse the schemas into Elasticsearch mappings."""
+        # Shorthand
+        default_type_props = self.config['default_type_properties']
+
         mappings = {}
         for (type_name, schema) in self.schemas.items():
             this_mapping = deepcopy(self.config['default_mapping'])
@@ -113,11 +117,9 @@ class SchemaManager(object):
                 expanded_properties[field_name] = {}
 
                 if ('type' in field_info and
-                        field_info['type'] in
-                        self.config['default_type_properties']):
+                        field_info['type'] in default_type_props):
                     expanded_properties[field_name].update(
-                        self.config['default_type_properties'] \
-                            [field_info['type']])
+                        default_type_props[field_info['type']])
 
                 expanded_properties[field_name].update(field_info)
 
