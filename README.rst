@@ -2,6 +2,9 @@
 .. image:: https://travis-ci.org/jmacmahon/lumberjack.png?branch=master
     :target: https://travis-ci.org/jmacmahon/lumberjack/
 
+.. image:: https://coveralls.io/repos/jmacmahon/lumberjack/badge.png?branch=master
+    :target: https://coveralls.io/r/jmacmahon/lumberjack?branch=master
+
 ============
  Lumberjack
 ============
