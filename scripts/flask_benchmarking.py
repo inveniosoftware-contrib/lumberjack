@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Lumberjack.  If not, see <http://www.gnu.org/licenses/>.
 
+# This file sets up a simple Flask server using lumberjack to log pageviews.
+# It is intended to be used with a benchmarking tool, for example ``ab``.
+
 from flask import Flask
 app = Flask(__name__)
 
@@ -25,6 +28,7 @@ import logging
 import sys
 from time import time
 from flask import request
+from copy import deepcopy
 
 NAME = 'lumberjack-flask-bench'
 logger = logging.getLogger(NAME)
@@ -44,8 +48,10 @@ eslogger.addHandler(stderrHandler)
 lj = None
 def init():
     global lj
+    config = deepcopy(lumberjack.DEFAULT_CONFIG)
+    config['index_prefix'] = 'flask-benchmark-'
     lj = lumberjack.Lumberjack(
-        index_prefix='flask-benchmark-',
+        config=config,
         hosts=[{'host': 'localhost', 'port': 9199}])
     start_time = time()
     lj.register_schema(logger=NAME,
