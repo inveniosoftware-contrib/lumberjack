@@ -48,7 +48,7 @@ eslogger.addHandler(stderrHandler)
 lj = None
 def init():
     global lj
-    config = deepcopy(lumberjack.DEFAULT_CONFIG)
+    config = lumberjack.get_default_config()
     config['index_prefix'] = 'flask-benchmark-'
     lj = lumberjack.Lumberjack(
         config=config,

@@ -23,6 +23,6 @@ from __future__ import absolute_import
 from .api import Lumberjack
 from .actions import ActionQueue
 from .schemas import SchemaManager
-from .config import DEFAULT_CONFIG
+from .config import get_default_config
 
-__all__ = ('Lumberjack', 'DEFAULT_CONFIG')
+__all__ = ('Lumberjack', 'get_default_config')

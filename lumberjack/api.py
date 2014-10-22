@@ -24,7 +24,7 @@ from elasticsearch import Elasticsearch
 from .handler import ElasticsearchHandler
 from .schemas import SchemaManager
 from .actions import ActionQueue
-from .config import DEFAULT_CONFIG
+from .config import get_default_config
 
 import logging
 from copy import deepcopy
@@ -73,7 +73,7 @@ class Lumberjack(object):
             self.elasticsearch = Elasticsearch(hosts=hosts)
 
         if config is None:
-            self.config = deepcopy(DEFAULT_CONFIG)
+            self.config = get_default_config()
         else:
             self.config = config
 

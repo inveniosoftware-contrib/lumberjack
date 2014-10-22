@@ -37,7 +37,7 @@ MOCK = True
 class LumberjackTestCase(unittest.TestCase):
     def setUp(self, config=None):
         if config is None:
-            self.config = lumberjack.DEFAULT_CONFIG.copy()        
+            self.config = lumberjack.get_default_config()
             self.config['index_prefix'] = (INDEX_PREFIX +
                                            str(randint(0, 2**30)) + '-')
         else:

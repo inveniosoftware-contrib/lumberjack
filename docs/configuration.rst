@@ -4,23 +4,23 @@ Configuration
 The default config is included at the end of this file for reference.
 
 Lumberjack is configured using a dict of config options passed to the
-Lumberjack object on instantiation.  The default config dict is to be found at
-``lumberjack.DEFAULT_CONFIG``::
+Lumberjack object on instantiation.  A safely-modifiable copy of the default
+config dict can be obtained by calling ``lumberjack.get_default_config()``::
 
-    from lumberjack import Lumberjack, DEFAULT_CONFIG
-    lj = Lumberjack(hosts=[...], config=DEFAULT_CONFIG)
+    from lumberjack import Lumberjack, get_default_config
+    lj = Lumberjack(hosts=[...], config=get_default_config())
 
 With the exception of ``index_prefix``, these defaults should be sensible for
 production.  You should change ``index_prefix`` to something different for each
 of your applications.
 
-In line with good practice, it is recommended to copy the default config before
-modifying it to pass in to Lumberjack.  For example if we wanted to change the
-default index prefix::
+The config returned is a deep copy of the default one, so it can be modified as
+you like without breaking subsequent calls to
+``lumberjack.get_default_config()``::
 
-    from lumberjack import Lumberjack, DEFAULT_CONFIG
+    from lumberjack import Lumberjack, get_default_config
 
-    my_config = DEFAULT_CONFIG.copy()
+    my_config = get_default_config()
     my_config['index_prefix'] = 'a-special-prefix-'
 
     lj = Lumberjack(hosts=[...], config=my_config)

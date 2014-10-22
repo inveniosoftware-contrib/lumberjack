@@ -19,6 +19,7 @@
 """The default configuration for Lumberjack."""
 
 from __future__ import absolute_import
+from copy import deepcopy
 
 DEFAULT_CONFIG = {
     'default_mapping': {
@@ -54,3 +55,13 @@ DEFAULT_CONFIG = {
     'interval': 30,
     'max_queue_length': None
 }
+
+
+def get_default_config():
+    """Get a copy of the default config.
+
+    The copy can be modified in-place without affecting the default config
+    itself.
+
+    """
+    return deepcopy(DEFAULT_CONFIG)

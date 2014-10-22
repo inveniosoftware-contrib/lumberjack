@@ -53,7 +53,7 @@ class APITestCase(LumberjackTestCase):
         lj = lumberjack.Lumberjack(hosts=HOSTS)
         if MOCK: patchLumberjackObject(lj)
 
-        self.assertEqual(lj.config, lumberjack.DEFAULT_CONFIG)
+        self.assertEqual(lj.config, lumberjack.get_default_config())
 
     def assert_general_sanity(self, lj):
         self.assertEqual(lj.config, self.config)
