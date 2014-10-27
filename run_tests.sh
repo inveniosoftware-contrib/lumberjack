@@ -18,5 +18,5 @@
 
 pep257 lumberjack
 pep8 lumberjack
-sphinx-build -qnNW docs docs/_build/html
+sphinx-build -qnN docs docs/_build/html
 python setup.py test -s tests

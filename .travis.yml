@@ -28,7 +28,7 @@ install:
 script:
   - pep8 lumberjack
   - pep257 lumberjack
-  - "sphinx-build -qnNW docs docs/_build/html"
+  - "sphinx-build -qnN docs docs/_build/html"
   - coverage run setup.py test
 
 after_success:
