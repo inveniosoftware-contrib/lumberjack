@@ -47,7 +47,8 @@ class ElasticsearchFormatter(logging.Formatter):
         else:
             es_document = deepcopy(record.msg)
 
-        es_document['@timestamp'] = record.created
+        # Milliseconds
+        es_document['@timestamp'] = record.created * 1000
         es_document['level'] = record.levelno
 
         record.message = es_document
