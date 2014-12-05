@@ -55,13 +55,6 @@ Lumberjack disables analysis on them.  (The reason for this is that while
 analysis is a powerful Elasticsearch feature when dealing with natural language
 documents, for log data it makes little sense.)
 
-Default index settings
-----------------------
-
-This contains settings to be added to new templates regarding the creation of
-indices, for example the ``number_of_shards`` and ``number_of_replicas``
-options.
-
 The interval
 ------------
 

@@ -47,10 +47,6 @@ DEFAULT_CONFIG = {
             'format': 'dateOptionalTime'
         }
     },
-    'default_index_settings': {
-        'number_of_shards': 6,
-        'number_of_replicas': 1
-    },
     'index_prefix': 'generic-logging-',
     'interval': 30,
     'max_queue_length': None

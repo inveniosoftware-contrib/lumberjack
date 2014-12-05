@@ -75,12 +75,11 @@ class SchemaManager(object):
         mappings = self._build_mappings()
         template = {
             'template': self.config['index_prefix'] + '*',
-            'settings': self.config['default_index_settings'],
             'mappings': mappings
         }
         logging.getLogger(__name__).debug('Registering a new template.')
         self.elasticsearch.indices.put_template(
-            name=self.config['index_prefix'] + '*',
+            name='lumberjack-' + self.config['index_prefix'] + '*',
             body=template
         )
         # Try to update existing things.

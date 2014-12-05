@@ -149,11 +149,7 @@ class SchemaTestCase(LumberjackTestCase):
                 'index': 'analyzed',
             }
         }
-        self.config['default_index_settings'] = {
-            'number_of_shards': 3,
-            'number_of_replicas': 2
-        }
-        
+
         expected_mapping = {
             'dynamic': 'strict',
             '_source': {'enabled': False},
@@ -185,11 +181,11 @@ class SchemaTestCase(LumberjackTestCase):
 
         if MOCK:
             def mock_put_template_f(name, body):
-                self.assertEqual(name, self.config['index_prefix'] + '*')
+                self.assertEqual(
+                    name,
+                    'lumberjack-' + self.config['index_prefix'] + '*')
                 self.assertEqual(body['template'],
                                  self.config['index_prefix'] + '*')
-                self.assertEqual(body['settings'],
-                                 self.config['default_index_settings'])
                 self.assertEqual(body['mappings'],
                                  self.lj.schema_manager._build_mappings())
 
@@ -206,9 +202,10 @@ class SchemaTestCase(LumberjackTestCase):
         # Test it's now in ES, unles we're in mock.
         if not MOCK:
             res = self.elasticsearch.indices.get_template(
-                name=self.config['index_prefix'] + '*')
+                name='lumberjack-' + self.config['index_prefix'] + '*')
 
             expected_schema = self.lj.schema_manager._build_mappings()['type_a']
 
-            self.assertEqual(res[self.config['index_prefix'] + '*'] \
-                         ['mappings']['type_a'], expected_schema)
+            self.assertEqual(
+                res['lumberjack-' + self.config['index_prefix'] +'*']
+                    ['mappings']['type_a'], expected_schema)
