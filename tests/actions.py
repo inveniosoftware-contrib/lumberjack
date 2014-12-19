@@ -31,9 +31,9 @@ INTERVAL_LONG = 10*INTERVAL_SHORT
 MAX_QUEUE_LENGTH = 20
 
 
-class AsyncTestCase(LumberjackTestCase):
+class ActionsTestCase(LumberjackTestCase):
     def setUp(self):
-        super(AsyncTestCase, self).setUp()
+        super(ActionsTestCase, self).setUp()
 
         self.config['interval'] = INTERVAL_SHORT
         self.config['max_queue_length'] = MAX_QUEUE_LENGTH
