@@ -80,10 +80,9 @@ class ActionQueue(Thread):
         Uses the ``self.queue_lock`` to prevent a race condition.
 
         """
-        self.queue_lock.acquire(True)
-        queue = list(self.queue)
-        self.queue = []
-        self.queue_lock.release()
+        with self.queue_lock:
+            queue = list(self.queue)
+            self.queue = []
 
         try:
             self.bulk(self.elasticsearch, queue)
@@ -161,9 +160,8 @@ class ActionQueue(Thread):
             '_source': body
         }
 
-        self.queue_lock.acquire(True)
-        self.queue.append(action)
-        self.queue_lock.release()
+        with self.queue_lock:
+            self.queue.append(action)
 
         self.logger.debug(
             'Put an action in the queue. qlen = %d, doc_type = %s',
