@@ -67,6 +67,12 @@ The maximum queue length
 This is the maximum length the queue can grow to before a flush is triggered
 automatically.
 
+The fallback log file
+---------------------
+
+If Lumberjack experiences an error when indexing to Elasticsearch, it will fall
+back to dumping JSON to the file given in this variable.
+
 The default config
 ------------------
 
