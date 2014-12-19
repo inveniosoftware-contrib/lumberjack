@@ -33,6 +33,9 @@ LOG_FORMAT = "%(asctime)s %(name)s\t%(message)s"
 DATE_FORMAT = "%c"
 
 MOCK = True
+MOCK_SKIP_MESSAGE = "This test is not available in a live environment."
+
+skipIfNotMock = unittest.skipIf(not MOCK, MOCK_SKIP_MESSAGE)
 
 class LumberjackTestCase(unittest.TestCase):
     def setUp(self, config=None):

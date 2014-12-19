@@ -21,10 +21,11 @@ import unittest
 import time
 import elasticsearch
 import logging
+import json
 
 import lumberjack
 
-from .common import LumberjackTestCase, HOSTS, MOCK, TestHandler
+from .common import LumberjackTestCase, HOSTS, MOCK, TestHandler, skipIfNotMock
 
 INTERVAL_SHORT = 2
 INTERVAL_LONG = 10*INTERVAL_SHORT
@@ -260,7 +261,7 @@ class ActionsTestCase(LumberjackTestCase):
 
         self.assertEqual(len(my_handler.records), 1)
         my_handler.assertLastLog('lumberjack.actions', 'ERROR',
-                                 'Error in flushing queue.  Lost 1 logs')
+                                 'Error in flushing queue. Falling back to file.')
 
     def test_general_error(self):
         my_handler = TestHandler()
@@ -287,3 +288,44 @@ class ActionsTestCase(LumberjackTestCase):
         my_handler.assertLastLog(
             'lumberjack.actions', 'ERROR',
             'Action queue thread terminated unexpectedly.')
+
+    def test_fallback_log_config(self):
+        self.getLumberjackObject()
+        self.assertIn('fallback_log_file', self.lj.config)
+
+    @skipIfNotMock
+    def test_fallback_log(self):
+        with open(self.lj.config['fallback_log_file'], 'w') as f:
+            f.write('')
+        self.getLumberjackObject()
+        self.lj.config['max_queue_length'] = MAX_QUEUE_LENGTH
+
+        class TestException(Exception): pass
+
+        completed_actions = []
+        called = {'called': False}
+        def mock_bulk_f(es, actions):
+            if len(completed_actions) > MAX_QUEUE_LENGTH:
+                called['called'] = True
+                raise elasticsearch.TransportError(400, 'Test exception.')
+            else:
+                completed_actions.extend(actions)
+        self.lj.action_queue.bulk = mock_bulk_f
+
+        doc = {'message': 'test'}
+        while len(self.lj.action_queue.queue) <= MAX_QUEUE_LENGTH:
+            self.lj.action_queue.queue_index(suffix='test',
+                                            doc_type=__name__,
+                                            body=doc)
+        time.sleep(0.1)
+        self.assertGreater(len(completed_actions), MAX_QUEUE_LENGTH)
+
+        self.lj.action_queue.queue_index(suffix='test',
+                                         doc_type=__name__,
+                                         body=doc)
+        self.lj.action_queue._flush()
+        time.sleep(0.1)
+        self.assertTrue(called['called'])
+        with open(self.lj.config['fallback_log_file'], 'r') as f:
+            line = f.next()
+            self.assertEqual(json.loads(line), completed_actions[0])
