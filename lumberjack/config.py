@@ -49,7 +49,8 @@ DEFAULT_CONFIG = {
     },
     'index_prefix': 'generic-logging-',
     'interval': 30,
-    'max_queue_length': None
+    'max_queue_length': None,
+    'fallback_log_file': '/tmp/lumberjack_fallback.log'
 }
 
 

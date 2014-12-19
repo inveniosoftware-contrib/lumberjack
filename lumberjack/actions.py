@@ -23,6 +23,7 @@ from __future__ import absolute_import
 from elasticsearch import ElasticsearchException, TransportError
 from elasticsearch.helpers import bulk
 from threading import Thread, Event, Lock
+from json import dumps
 import traceback
 import logging
 
@@ -87,9 +88,12 @@ class ActionQueue(Thread):
         try:
             self.bulk(self.elasticsearch, queue)
         except TransportError as exception:
-            self.logger.error('Error in flushing queue.  Lost %d logs',
-                              len(queue),
+            self.logger.error('Error in flushing queue. Falling back to file.',
                               exc_info=exception)
+            json_lines = map(lambda doc: dumps(doc) + '\n', queue)
+            with open(self.config['fallback_log_file'], 'a') as log_file:
+                for line in json_lines:
+                    log_file.write(line)
         else:
             self.logger.debug('Flushed %d logs into Elasticsearch.',
                               len(queue))
