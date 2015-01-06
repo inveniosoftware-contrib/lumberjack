@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 import unittest
-from .common import LumberjackTestCase, MOCK
+from .common import LumberjackTestCase, MOCK, skipIfNotMock, TestHandler
 
 import lumberjack
 
@@ -209,3 +209,45 @@ class SchemaTestCase(LumberjackTestCase):
             self.assertEqual(
                 res['lumberjack-' + self.config['index_prefix'] +'*']
                     ['mappings']['type_a'], expected_schema)
+
+    @skipIfNotMock
+    def test_put_mapping_transport_error(self):
+        my_handler = TestHandler()
+        my_handler.setLevel(logging.WARNING)
+        logging.getLogger('lumberjack.schemas').addHandler(my_handler)
+
+        self.getLumberjackObject()
+
+        called = {'called': False}
+        def mock_put_mapping_f(index, body, doc_type):
+            called['called'] = True
+            raise elasticsearch.TransportError(400, 'Test exception')
+        self.elasticsearch.indices.put_mapping = mock_put_mapping_f
+        self.lj.register_schema('type_a', SCHEMA_A)
+        self.assertTrue(called['called'])
+
+        my_handler.assertLastLog('lumberjack.schemas', 'WARNING',
+                                 'There was an error putting the new ' +
+                                 'mapping on some indices.  If you try to ' +
+                                 'log new data to these, you will see errors.')
+        # No crash
+
+    @skipIfNotMock
+    def test_put_template_transport_error(self):
+        my_handler = TestHandler()
+        my_handler.setLevel(logging.WARNING)
+        logging.getLogger('lumberjack.schemas').addHandler(my_handler)
+
+        self.getLumberjackObject()
+
+        called = {'called': False}
+        def mock_put_template_f(name, body):
+            called['called'] = True
+            raise elasticsearch.TransportError(400, 'Test exception')
+        self.elasticsearch.indices.put_template = mock_put_template_f
+        self.lj.register_schema('type_a', SCHEMA_A)
+        self.assertTrue(called['called'])
+
+        my_handler.assertLastLog('lumberjack.schemas', 'WARNING',
+                                 'Error putting new template in Elasticsearch.')
+        # No crash
