@@ -21,7 +21,7 @@
 from __future__ import absolute_import
 
 import logging
-from elasticsearch import NotFoundError
+from elasticsearch import NotFoundError, TransportError
 from copy import deepcopy
 
 
@@ -78,12 +78,16 @@ class SchemaManager(object):
             'mappings': mappings
         }
         logging.getLogger(__name__).debug('Registering a new template.')
-        self.elasticsearch.indices.put_template(
-            name='lumberjack-' + self.config['index_prefix'] + '*',
-            body=template
-        )
+        try:
+            self.elasticsearch.indices.put_template(
+                name='lumberjack-' + self.config['index_prefix'] + '*',
+                body=template
+            )
+        except TransportError:
+            logging.getLogger(__name__).warning(
+                'Error putting new template in Elasticsearch.')
+
         # Try to update existing things.
-        # TODO: fix this
         for (doc_type, mapping) in mappings.items():
             try:
                 self.elasticsearch.indices.put_mapping(
@@ -93,6 +97,11 @@ class SchemaManager(object):
                 )
             except NotFoundError:
                 pass
+            except TransportError:
+                logging.getLogger(__name__).warning(
+                    'There was an error putting the new mapping on some ' +
+                    'indices.  If you try to log new data to these, you ' +
+                    'will see errors.')
 
     def _build_mappings(self):
         """Parse the schemas into Elasticsearch mappings."""
