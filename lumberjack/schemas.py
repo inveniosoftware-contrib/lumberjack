@@ -85,7 +85,8 @@ class SchemaManager(object):
             )
         except TransportError:
             logging.getLogger(__name__).warning(
-                'Error putting new template in Elasticsearch.')
+                'Error putting new template in Elasticsearch.',
+                exc_info=True)
 
         # Try to update existing things.
         for (doc_type, mapping) in mappings.items():
@@ -101,7 +102,8 @@ class SchemaManager(object):
                 logging.getLogger(__name__).warning(
                     'There was an error putting the new mapping on some ' +
                     'indices.  If you try to log new data to these, you ' +
-                    'will see errors.')
+                    'will see errors.',
+                    exc_info=True)
 
     def _build_mappings(self):
         """Parse the schemas into Elasticsearch mappings."""

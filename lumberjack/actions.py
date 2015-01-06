@@ -87,9 +87,9 @@ class ActionQueue(Thread):
 
         try:
             self.bulk(self.elasticsearch, queue)
-        except TransportError as exception:
+        except TransportError:
             self.logger.error('Error in flushing queue. Falling back to file.',
-                              exc_info=exception)
+                              exc_info=True)
             json_lines = map(lambda doc: dumps(doc) + '\n', queue)
             with open(self.config['fallback_log_file'], 'a') as log_file:
                 for line in json_lines:
@@ -121,7 +121,8 @@ class ActionQueue(Thread):
                 traceback.print_exc(exc)
             except Exception as exc:
                 self.logger.error(
-                    'Action queue thread terminated unexpectedly.')
+                    'Action queue thread terminated unexpectedly.',
+                    exc_info=True)
                 self.last_exception = exc
                 caught_exception = True
 
