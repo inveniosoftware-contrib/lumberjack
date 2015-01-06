@@ -226,10 +226,11 @@ class SchemaTestCase(LumberjackTestCase):
         self.lj.register_schema('type_a', SCHEMA_A)
         self.assertTrue(called['called'])
 
-        my_handler.assertLogged('lumberjack.schemas', 'WARNING',
-                                 'There was an error putting the new ' +
-                                 'mapping on some indices.  If you try to ' +
-                                 'log new data to these, you will see errors.')
+        my_handler.assertLoggedWithException(
+            'lumberjack.schemas', 'WARNING',
+            'There was an error putting the new mapping on some indices.  ' +
+            'If you try to log new data to these, you will see errors.',
+            test_exception)
         # No crash
 
     @skipIfNotMock
@@ -248,6 +249,8 @@ class SchemaTestCase(LumberjackTestCase):
         self.lj.register_schema('type_a', SCHEMA_A)
         self.assertTrue(called['called'])
 
-        my_handler.assertLogged('lumberjack.schemas', 'WARNING',
-                                 'Error putting new template in Elasticsearch.')
+        my_handler.assertLoggedWithException(
+            'lumberjack.schemas', 'WARNING',
+            'Error putting new template in Elasticsearch.',
+            test_exception)
         # No crash

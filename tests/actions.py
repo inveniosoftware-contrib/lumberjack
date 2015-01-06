@@ -259,8 +259,10 @@ class ActionsTestCase(LumberjackTestCase):
         self.lj.action_queue.join(timeout=10)
         self.assertFalse(self.lj.action_queue.is_alive())
 
-        my_handler.assertLogged('lumberjack.actions', 'ERROR',
-                                 'Error in flushing queue. Falling back to file.')
+        my_handler.assertLoggedWithException(
+            'lumberjack.actions', 'ERROR',
+            'Error in flushing queue. Falling back to file.',
+            test_exception)
 
     def test_general_error(self):
         my_handler = TestHandler()
@@ -283,9 +285,10 @@ class ActionsTestCase(LumberjackTestCase):
                          TestException)
         self.lj.action_queue.last_exception = None
 
-        my_handler.assertLogged(
+        my_handler.assertLoggedWithException(
             'lumberjack.actions', 'ERROR',
-            'Action queue thread terminated unexpectedly.')
+            'Action queue thread terminated unexpectedly.',
+            test_exception)
 
     def test_fallback_log_config(self):
         self.getLumberjackObject()
