@@ -213,7 +213,6 @@ class SchemaTestCase(LumberjackTestCase):
     @skipIfNotMock
     def test_put_mapping_transport_error(self):
         my_handler = TestHandler()
-        my_handler.setLevel(logging.WARNING)
         logging.getLogger('lumberjack.schemas').addHandler(my_handler)
 
         self.getLumberjackObject()
@@ -226,7 +225,7 @@ class SchemaTestCase(LumberjackTestCase):
         self.lj.register_schema('type_a', SCHEMA_A)
         self.assertTrue(called['called'])
 
-        my_handler.assertLastLog('lumberjack.schemas', 'WARNING',
+        my_handler.assertLogged('lumberjack.schemas', 'WARNING',
                                  'There was an error putting the new ' +
                                  'mapping on some indices.  If you try to ' +
                                  'log new data to these, you will see errors.')
@@ -235,7 +234,6 @@ class SchemaTestCase(LumberjackTestCase):
     @skipIfNotMock
     def test_put_template_transport_error(self):
         my_handler = TestHandler()
-        my_handler.setLevel(logging.WARNING)
         logging.getLogger('lumberjack.schemas').addHandler(my_handler)
 
         self.getLumberjackObject()
@@ -248,6 +246,6 @@ class SchemaTestCase(LumberjackTestCase):
         self.lj.register_schema('type_a', SCHEMA_A)
         self.assertTrue(called['called'])
 
-        my_handler.assertLastLog('lumberjack.schemas', 'WARNING',
+        my_handler.assertLogged('lumberjack.schemas', 'WARNING',
                                  'Error putting new template in Elasticsearch.')
         # No crash

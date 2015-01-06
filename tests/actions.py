@@ -242,7 +242,6 @@ class ActionsTestCase(LumberjackTestCase):
 
     def test_transport_error(self):
         my_handler = TestHandler()
-        my_handler.setLevel(logging.ERROR)
         logging.getLogger('lumberjack.actions').addHandler(my_handler)
 
         self.getLumberjackObject()
@@ -259,13 +258,11 @@ class ActionsTestCase(LumberjackTestCase):
         self.lj.action_queue.join(timeout=10)
         self.assertFalse(self.lj.action_queue.is_alive())
 
-        self.assertEqual(len(my_handler.records), 1)
-        my_handler.assertLastLog('lumberjack.actions', 'ERROR',
+        my_handler.assertLogged('lumberjack.actions', 'ERROR',
                                  'Error in flushing queue. Falling back to file.')
 
     def test_general_error(self):
         my_handler = TestHandler()
-        my_handler.setLevel(logging.ERROR)
         logging.getLogger('lumberjack.actions').addHandler(my_handler)
 
         self.getLumberjackObject()
@@ -284,8 +281,7 @@ class ActionsTestCase(LumberjackTestCase):
                          TestException)
         self.lj.action_queue.last_exception = None
 
-        self.assertEqual(len(my_handler.records), 1)
-        my_handler.assertLastLog(
+        my_handler.assertLogged(
             'lumberjack.actions', 'ERROR',
             'Action queue thread terminated unexpectedly.')
 
