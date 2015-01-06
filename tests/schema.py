@@ -217,10 +217,11 @@ class SchemaTestCase(LumberjackTestCase):
 
         self.getLumberjackObject()
 
+        test_exception = elasticsearch.TransportError(400, 'Test exception')
         called = {'called': False}
         def mock_put_mapping_f(index, body, doc_type):
             called['called'] = True
-            raise elasticsearch.TransportError(400, 'Test exception')
+            raise test_exception
         self.elasticsearch.indices.put_mapping = mock_put_mapping_f
         self.lj.register_schema('type_a', SCHEMA_A)
         self.assertTrue(called['called'])
@@ -238,10 +239,11 @@ class SchemaTestCase(LumberjackTestCase):
 
         self.getLumberjackObject()
 
+        test_exception = elasticsearch.TransportError(400, 'Test exception')
         called = {'called': False}
         def mock_put_template_f(name, body):
             called['called'] = True
-            raise elasticsearch.TransportError(400, 'Test exception')
+            raise test_exception
         self.elasticsearch.indices.put_template = mock_put_template_f
         self.lj.register_schema('type_a', SCHEMA_A)
         self.assertTrue(called['called'])

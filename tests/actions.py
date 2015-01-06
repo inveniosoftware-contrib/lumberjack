@@ -246,8 +246,9 @@ class ActionsTestCase(LumberjackTestCase):
 
         self.getLumberjackObject()
 
+        test_exception = elasticsearch.TransportError(400, 'Test exception')
         def mock_bulk_f(es, actions):
-            raise elasticsearch.TransportError()
+            raise test_exception
         self.lj.action_queue.bulk = mock_bulk_f
 
         with self.lj.action_queue.queue_lock:
@@ -269,8 +270,9 @@ class ActionsTestCase(LumberjackTestCase):
 
         class TestException(Exception):
             pass
+        test_exception = TestException()
         def mock_bulk_f(es, actions):
-            raise TestException()
+            raise test_exception
         self.lj.action_queue.bulk = mock_bulk_f
 
         self.lj.trigger_flush()
