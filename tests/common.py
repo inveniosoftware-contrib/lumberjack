@@ -116,6 +116,14 @@ class TestHandler(logging.Handler):
                                          repr(processed_records))
                 return self.records[log_index]
 
+            def assertLoggedWithException(self, name, levelname, message,
+                                          exception):
+                record = self.assertLogged(name, levelname, message)
+                assert record.exc_info is not None, 'record.exc_info is None'
+
+                assert record.exc_info[1] == exception, (
+                    repr(record.exc_info[1]) + ' != ' + repr(exception))
+
 def patchLumberjackObject(lj):
     def noop(*args, **kwargs):
         pass
