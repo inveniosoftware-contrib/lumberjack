@@ -82,12 +82,15 @@ class LumberjackTestCase(unittest.TestCase):
     def deleteIndices(self, elasticsearch=None):
         if not MOCK:
             if elasticsearch is None:
-                elasticsearch = self.lj.elasticsearch
+                if hasattr(self, 'lj'):
+                    elasticsearch = self.lj.elasticsearch
+                else:
+                    return
             elasticsearch.indices.delete(
                 index=self.config['index_prefix'] + '*')
             try:
                 elasticsearch.indices.delete_template(
-                    name=self.config['index_prefix'] + '*')
+                    name='lumberjack-' + self.config['index_prefix'] + '*')
             except NotFoundError:
                 pass
 

@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 import unittest
-from .common import LumberjackTestCase, MOCK, skipIfNotMock, TestHandler
+from .common import LumberjackTestCase, MOCK, skipIfNotMock, TestHandler, HOSTS
 
 import lumberjack
 
@@ -27,6 +27,7 @@ import elasticsearch
 import sys
 import time
 from random import randint
+from mock import Mock, call
 
 SCHEMA_A = {
     'dynamic': 'strict',
@@ -63,10 +64,8 @@ SCHEMA_B = {
 
 
 class SchemaTestCase(LumberjackTestCase):
-    def test_build_mappings(self):
+    def test_build_mapping(self):
         self.getLumberjackObject()
-        self.lj.schema_manager.schemas['type_a'] = SCHEMA_A
-        self.lj.schema_manager.schemas['type_b'] = SCHEMA_B
         expected_mapping_a = {
             'dynamic': 'strict',
             '_source': {'enabled': True},
@@ -126,12 +125,13 @@ class SchemaTestCase(LumberjackTestCase):
                 }
             }
         }
-        self.maxDiff = None
-        mappings = self.lj.schema_manager._build_mappings()
-        self.assertEqual(mappings['type_a'], expected_mapping_a)
-        self.assertEqual(mappings['type_b'], expected_mapping_b)
 
-    def test_build_mappings_non_default(self):
+        self.assertEqual(self.lj.schema_manager._build_mapping(SCHEMA_A),
+                         expected_mapping_a)
+        self.assertEqual(self.lj.schema_manager._build_mapping(SCHEMA_B),
+                         expected_mapping_b)
+
+    def test_build_mapping_non_default(self):
         self.config['default_mapping'] = {
             '_source': {'enabled': False},
             '_ttl': {'enabled': False},
@@ -150,6 +150,15 @@ class SchemaTestCase(LumberjackTestCase):
             }
         }
 
+        custom_schema = {
+            'dynamic': 'strict',
+            '_all': {'enabled': False},
+            'properties': {
+                'username': {'type': 'string', 'index': 'not_analyzed'},
+                'message': {'type': 'string'}
+            }
+        }
+
         expected_mapping = {
             'dynamic': 'strict',
             '_source': {'enabled': False},
@@ -164,51 +173,123 @@ class SchemaTestCase(LumberjackTestCase):
         }
 
         self.getLumberjackObject()
-        self.lj.schema_manager.schemas['type_b'] = {
-            'dynamic': 'strict',
-            '_all': {'enabled': False},
-            'properties': {
-                'username': {'type': 'string', 'index': 'not_analyzed'},
-                'message': {'type': 'string'}
-            }
-        }
 
-        self.assertEqual(self.lj.schema_manager._build_mappings()['type_b'],
+        self.assertEqual(self.lj.schema_manager._build_mapping(custom_schema),
                          expected_mapping)
 
     def test_register_schema(self):
         self.getLumberjackObject()
+        expected_template = self.build_expected_template('type_a', SCHEMA_A)
 
         if MOCK:
             def mock_put_template_f(name, body):
                 self.assertEqual(
                     name,
-                    'lumberjack-' + self.config['index_prefix'] + '*')
-                self.assertEqual(body['template'],
-                                 self.config['index_prefix'] + '*')
-                self.assertEqual(body['mappings'],
-                                 self.lj.schema_manager._build_mappings())
+                    'lumberjack-' + self.config['index_prefix'] + 'type_a')
+                self.assertEqual(body, expected_template)
 
             def mock_put_mapping_f(index, body, doc_type):
                 self.assertEqual(
                     body,
-                    self.lj.schema_manager._build_mappings()[doc_type])
+                    expected_template['mappings']['type_a'])
 
             self.elasticsearch.indices.put_template = mock_put_template_f
             self.elasticsearch.indices.put_mapping = mock_put_mapping_f
 
         self.lj.register_schema('type_a', SCHEMA_A)
 
-        # Test it's now in ES, unles we're in mock.
+        if not MOCK:
+            res = self.elasticsearch.indices.get_template(
+                name='lumberjack-' + self.config['index_prefix'] + '*')
+            self.assertDictContainsSubset(expected_template,
+                res['lumberjack-' + self.config['index_prefix'] +'type_a'])
+
+    def build_expected_template(self, name, schema, lj=None):
+        if lj is None:
+            lj = self.lj
+        mapping = lj.schema_manager._build_mapping(schema)
+        template = {
+            'template': self.config['index_prefix'] + '*',
+            'mappings': { name: mapping }
+        }
+        return template
+
+    def test_register_multiple_schemas(self):
+        self.getLumberjackObject()
+
+        expected_templates = {
+            'type_a': self.build_expected_template('type_a', SCHEMA_A),
+            'type_b': self.build_expected_template('type_b', SCHEMA_B)
+        }
+
+        if MOCK:
+            mock_put_template_f = Mock(return_value=None)
+            self.elasticsearch.indices.put_template = mock_put_template_f
+
+            mock_put_mapping_f = Mock(return_value=None)
+            self.elasticsearch.indices.put_mapping = mock_put_mapping_f
+
+        self.lj.register_schema('type_a', SCHEMA_A)
+        self.lj.register_schema('type_b', SCHEMA_B)
+
+        if MOCK:
+            self.assertEqual(mock_put_template_f.call_count, 2)
+            mock_put_template_f.assert_has_calls([
+                call(name='lumberjack-' + self.config['index_prefix'] +
+                    'type_a',
+                     body=expected_templates['type_a']),
+                call(name='lumberjack-' + self.config['index_prefix'] +
+                     'type_b',
+                     body=expected_templates['type_b'])
+                ])
+
         if not MOCK:
             res = self.elasticsearch.indices.get_template(
                 name='lumberjack-' + self.config['index_prefix'] + '*')
 
-            expected_schema = self.lj.schema_manager._build_mappings()['type_a']
+            self.assertDictContainsSubset(
+                expected_templates['type_a'],
+                res['lumberjack-' + self.config['index_prefix'] + 'type_a'])
+            self.assertDictContainsSubset(
+                expected_templates['type_b'],
+                res['lumberjack-' + self.config['index_prefix'] + 'type_b'])
 
-            self.assertEqual(
-                res['lumberjack-' + self.config['index_prefix'] +'*']
-                    ['mappings']['type_a'], expected_schema)
+    def test_register_single_schema_multiple_lumberjacks(self):
+        lj1 = lumberjack.Lumberjack(hosts=HOSTS, config=self.config)
+        lj2 = lumberjack.Lumberjack(hosts=HOSTS, config=self.config)
+
+        expected_template = self.build_expected_template('type_a', SCHEMA_A,
+                                                         lj=lj1)
+        if MOCK:
+            mock_put_template_f1 = Mock(return_value=None)
+            lj1.elasticsearch.indices.put_template = mock_put_template_f1
+
+            mock_put_template_f2 = Mock(return_value=None)
+            lj2.elasticsearch.indices.put_template = mock_put_template_f2
+
+        if not MOCK:
+            self.addCleanup(self.deleteIndices, lj1.elasticsearch)
+
+        lj1.register_schema('type_a', SCHEMA_A)
+        lj2.register_schema('type_a', SCHEMA_A)
+
+        if MOCK:
+            self.assertEqual(mock_put_template_f1.call_count, 1)
+            self.assertEqual(mock_put_template_f2.call_count, 1)
+
+            mock_put_template_f1.assert_called_with(
+                name='lumberjack-' + self.config['index_prefix'] + 'type_a',
+                body=expected_template)
+            mock_put_template_f2.assert_called_with(
+                name='lumberjack-' + self.config['index_prefix'] + 'type_a',
+                body=expected_template)
+
+        if not MOCK:
+            res = lj1.elasticsearch.indices.get_template(
+                name='lumberjack-' + self.config['index_prefix'] + '*')
+            self.assertDictContainsSubset(
+                expected_template,
+                res['lumberjack-' + self.config['index_prefix'] + 'type_a'])
 
     @skipIfNotMock
     def test_put_mapping_transport_error(self):
@@ -251,6 +332,6 @@ class SchemaTestCase(LumberjackTestCase):
 
         my_handler.assertLoggedWithException(
             'lumberjack.schemas', 'WARNING',
-            'Error putting new template in Elasticsearch.',
+            'Error putting new template in Elasticsearch: type_a.',
             test_exception)
         # No crash
