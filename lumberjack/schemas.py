@@ -46,7 +46,6 @@ class SchemaManager(object):
     def __init__(self, elasticsearch, config):
         """Init method.  See class docstring."""
         self.elasticsearch = elasticsearch
-        self.schemas = {}
 
         self.config = config
 
@@ -62,82 +61,74 @@ class SchemaManager(object):
         :param schema: The schema data to be processed into a mapping.
 
         """
-        self.schemas[logger] = schema
-        self._update_index_templates()
+        mapping = self._build_mapping(schema)
 
-    def _update_index_templates(self):
-        """Parse schemas into mappings and insert into Elasticsearch.
-
-        Put mappings into Elasticsearch templates.  Should also update mappings
-        in existing indices, but this is currently broken.
-
-        """
-        mappings = self._build_mappings()
         template = {
             'template': self.config['index_prefix'] + '*',
-            'mappings': mappings
+            'mappings': {
+                logger: mapping
+            }
         }
-        logging.getLogger(__name__).debug('Registering a new template.')
+        logging.getLogger(__name__).debug(
+            'Registering a new template for %s.', logger)
         try:
             self.elasticsearch.indices.put_template(
-                name='lumberjack-' + self.config['index_prefix'] + '*',
+                name='lumberjack-' + self.config['index_prefix'] +
+                logger,
                 body=template
             )
         except TransportError:
             logging.getLogger(__name__).warning(
-                'Error putting new template in Elasticsearch.',
+                'Error putting new template in Elasticsearch: %s.',
+                logger,
                 exc_info=True)
 
         # Try to update existing things.
-        for (doc_type, mapping) in mappings.items():
-            try:
-                self.elasticsearch.indices.put_mapping(
-                    index=self.config['index_prefix'] + '*',
-                    doc_type=doc_type,
-                    body=mapping
-                )
-            except NotFoundError:
-                pass
-            except TransportError:
-                logging.getLogger(__name__).warning(
-                    'There was an error putting the new mapping on some ' +
-                    'indices.  If you try to log new data to these, you ' +
-                    'will see errors.',
-                    exc_info=True)
+        try:
+            self.elasticsearch.indices.put_mapping(
+                index=self.config['index_prefix'] + '*',
+                doc_type=logger,
+                body=mapping
+            )
+        except NotFoundError:
+            pass
+        except TransportError:
+            logging.getLogger(__name__).warning(
+                'There was an error putting the new mapping on some ' +
+                'indices.  If you try to log new data to these, you ' +
+                'will see errors.',
+                exc_info=True)
 
-    def _build_mappings(self):
-        """Parse the schemas into Elasticsearch mappings."""
+    def _build_mapping(self, schema):
+        """Parse the schema into an Elasticsearch mapping."""
         # Shorthand
         default_type_props = self.config['default_type_properties']
 
-        mappings = {}
-        for (type_name, schema) in self.schemas.items():
-            this_mapping = deepcopy(self.config['default_mapping'])
-            working_schema = deepcopy(schema)
+        this_mapping = deepcopy(self.config['default_mapping'])
+        working_schema = deepcopy(schema)
 
-            # Combine the unprocessed properties into this_mapping.
-            if 'properties' in working_schema:
-                this_mapping['properties'].update(schema['properties'])
-                # So we don't overwrite this_mapping['properties'] later
-                del working_schema['properties']
+        # Combine the unprocessed properties into this_mapping.
+        if 'properties' in working_schema:
+            this_mapping['properties'].update(schema['properties'])
+            # So we don't overwrite this_mapping['properties'] later
+            del working_schema['properties']
 
-            # Expand the fields in this_mapping['properties'] based on type.
-            expanded_properties = {}
-            for (field_name, field_info) in this_mapping['properties'].items():
-                expanded_properties[field_name] = {}
+        # Expand the fields in this_mapping['properties'] based on type.
+        expanded_properties = {}
+        for (field_name, field_info) in this_mapping['properties'].items():
+            expanded_properties[field_name] = {}
 
-                if ('type' in field_info and
-                        field_info['type'] in default_type_props):
-                    expanded_properties[field_name].update(
-                        default_type_props[field_info['type']])
+            if ('type' in field_info and
+                    field_info['type'] in default_type_props):
+                expanded_properties[field_name].update(
+                    default_type_props[field_info['type']])
 
-                expanded_properties[field_name].update(field_info)
+            expanded_properties[field_name].update(field_info)
 
-            # Put the expanded properties into the mapping for this type.
-            this_mapping['properties'] = expanded_properties
+        # Put the expanded properties into the mapping for this type.
+        this_mapping['properties'] = expanded_properties
 
-            # Overwrite the defaults where applicable.
-            this_mapping.update(working_schema)
+        # Overwrite the defaults where applicable.
+        this_mapping.update(working_schema)
 
-            mappings[type_name] = this_mapping
-        return mappings
+        return this_mapping

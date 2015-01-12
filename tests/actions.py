@@ -85,7 +85,7 @@ class ActionsTestCase(LumberjackTestCase):
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body={'message': 'testE'})
-        time.sleep(INTERVAL_JUMP_THREAD)
+        time.sleep(INTERVAL_SHORT)
 
         self.assertEqual(len(actions_list), 1)
         self.assertEqual(actions_list[0]['_source'], {'message': 'testE'})
@@ -254,14 +254,14 @@ class ActionsTestCase(LumberjackTestCase):
             self.lj.action_queue.queue_index(suffix='test',
                                             doc_type=__name__,
                                             body=doc)
-        time.sleep(INTERVAL_SHORT)
+        time.sleep(INTERVAL_JUMP_THREAD)
         self.assertGreater(len(completed_actions), MAX_QUEUE_LENGTH)
 
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body=doc)
         self.lj.action_queue._flush()
-        time.sleep(INTERVAL_SHORT)
+        time.sleep(INTERVAL_JUMP_THREAD)
 
         self.assertTrue(called['called'])
         with open(self.lj.config['fallback_log_file'], 'r') as f:
