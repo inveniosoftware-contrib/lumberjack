@@ -32,17 +32,16 @@ Testing
 
 By default, the test suite works by monkey-patching bits of the
 elasticsearch-py module and asserting that they were called with the right
-arguments.  This is OK for automated testing like Travis, but isn't entirely
-"real-world".
+arguments.
 
-To run the test suite on an actual Elasticsearch cluster, you should edit the
-constants at the top of tests/common.py in the obvious way.  The main thing you
-should do is set MOCK = False.
+Some of the tests also can be run using an actual Elasticsearch cluster.  To do
+this, you should edit the constants at the top of tests/common.py in the
+obvious way.  The main thing you should do is set MOCK = False.
 
-By default the tests expect an Elasticsearch node at <http://localhost:9199>.
-My setup is that I forward this port over SSH to the actual node I want to
-connect to; that way I can firewall the nodes and also easily switch between
-them.
+By default the live tests expect an Elasticsearch node at
+<http://localhost:9199>.  My setup is that I forward this port over SSH to the
+actual node I want to connect to; that way I can firewall the nodes and also
+easily switch between them.
 
 To run the tests themselves, you should run::
 
