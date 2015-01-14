@@ -22,6 +22,8 @@ import time
 import elasticsearch
 import logging
 import json
+from mock import MagicMock
+from contextlib import contextmanager
 
 import lumberjack
 
@@ -232,12 +234,17 @@ class ActionsTestCase(LumberjackTestCase):
 
     @skipIfNotMock
     def test_fallback_log(self):
-        with open(self.lj.config['fallback_log_file'], 'w') as f:
-            f.write('')
         self.getLumberjackObject()
         self.lj.config['max_queue_length'] = MAX_QUEUE_LENGTH
 
-        class TestException(Exception): pass
+        args = {}
+        file_ = MagicMock(spec=file)
+        @contextmanager
+        def my_open(filename, mode):
+            args['filename'] = filename
+            args['mode'] = mode
+            yield file_
+        self.lj.action_queue.open_ = my_open
 
         completed_actions = []
         called = {'called': False}
@@ -264,6 +271,74 @@ class ActionsTestCase(LumberjackTestCase):
         time.sleep(INTERVAL_JUMP_THREAD)
 
         self.assertTrue(called['called'])
-        with open(self.lj.config['fallback_log_file'], 'r') as f:
-            line = f.next()
-            self.assertEqual(json.loads(line), completed_actions[0])
+
+        self.assertEqual(args['filename'], '/tmp/lumberjack_fallback.log')
+        self.assertEqual(args['mode'], 'a')
+
+        file_.write.assert_called_with(json.dumps(completed_actions[0]) + '\n')
+
+    @skipIfNotMock
+    def test_fallback_file_name(self):
+        config_file = '/tmp/some_other_file.log'
+
+        self.getLumberjackObject()
+        self.lj.config['fallback_log_file'] = config_file
+
+        args = {}
+        file_ = MagicMock(spec=file)
+        @contextmanager
+        def my_open(filename, mode):
+            args['filename'] = filename
+            args['mode'] = mode
+            yield file_
+        self.lj.action_queue.open_ = my_open
+
+        completed_actions = []
+        def mock_bulk_f(es, actions):
+            completed_actions.extend(actions)
+            raise elasticsearch.TransportError(400, 'Test exception.')
+        self.lj.action_queue.bulk = mock_bulk_f
+
+        self.lj.action_queue.queue_index(suffix='test',
+                                         doc_type=__name__,
+                                         body={'message': 'test'})
+        self.lj.action_queue.trigger_flush()
+        time.sleep(INTERVAL_JUMP_THREAD)
+
+        self.assertEqual(args['filename'], config_file)
+        self.assertEqual(args['mode'], 'a')
+
+        self.assertEqual(len(completed_actions), 1)
+        file_.write.assert_called_with(json.dumps(completed_actions[0]) + '\n')
+
+    @skipIfNotMock
+    def test_fallback_error(self):
+        my_handler = TestHandler()
+        logging.getLogger('lumberjack.actions').addHandler(my_handler)
+
+        my_ioerror = IOError('Test error')
+
+        class BadFile(object):
+            def write(self, str_):
+                raise my_ioerror
+
+        @contextmanager
+        def my_open(filename, mode):
+            yield BadFile()
+
+        self.getLumberjackObject()
+        self.lj.action_queue.open_ = my_open
+
+        def mock_bulk_f(es, actions):
+            raise elasticsearch.TransportError(400, 'Test exception.')
+        self.lj.action_queue.bulk = mock_bulk_f
+
+        self.lj.action_queue.queue_index(suffix='test',
+                                         doc_type=__name__,
+                                         body={'message': 'test'})
+        self.lj.action_queue.trigger_flush()
+        time.sleep(INTERVAL_JUMP_THREAD)
+
+        my_handler.assertLoggedWithException('lumberjack.actions', 'ERROR',
+                                             'Error in fallback log. Lost ' +
+                                             '1 logs.', my_ioerror)
