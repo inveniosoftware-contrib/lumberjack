@@ -71,8 +71,9 @@ class ActionQueue(Thread):
         self.logger = logging.getLogger(__name__)
 
         self.daemon = True
-        # So we can monkey-patch this in testing
+        # So we can monkey-patch these in testing
         self.bulk = bulk
+        self.open_ = open
 
     def _flush(self):
         """Perform all actions in the queue.
@@ -90,10 +91,15 @@ class ActionQueue(Thread):
         except TransportError:
             self.logger.error('Error in flushing queue. Falling back to file.',
                               exc_info=True)
-            json_lines = map(lambda doc: dumps(doc) + '\n', queue)
-            with open(self.config['fallback_log_file'], 'a') as log_file:
-                for line in json_lines:
-                    log_file.write(line)
+            try:
+                with self.open_(self.config['fallback_log_file'],
+                                'a') as log_file:
+                    json_lines = map(lambda doc: dumps(doc) + '\n', queue)
+                    for line in json_lines:
+                        log_file.write(line)
+            except IOError:
+                self.logger.error('Error in fallback log. Lost %d logs.',
+                                  len(queue), exc_info=True)
         else:
             self.logger.debug('Flushed %d logs into Elasticsearch.',
                               len(queue))
