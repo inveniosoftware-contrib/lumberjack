@@ -53,6 +53,33 @@ class ActionsTestCase(LumberjackTestCase):
                          self.lj.action_queue.config['max_queue_length'])
 
     @skipIfNotMock
+    def test_unexpected_exception(self):
+        my_handler = TestHandler()
+        logging.getLogger('lumberjack.actions').addHandler(my_handler)
+
+        self.getLumberjackObject()
+        class TestException(Exception):
+            pass
+        test_exception = TestException()
+        self.lj.action_queue._flush = MagicMock(side_effect=test_exception)
+
+        self.lj.trigger_flush()
+        time.sleep(INTERVAL_JUMP_THREAD)
+
+        my_handler.assertLoggedWithException(
+            'lumberjack.actions', 'ERROR',
+            'Unexpected exception in actions thread. Continuing anyway.',
+            test_exception)
+
+        self.assertIn(test_exception, self.lj.action_queue.exceptions)
+        self.assertTrue(self.lj.action_queue.is_alive())
+
+        # Teardown
+        self.lj.action_queue.running = False
+        self.lj.action_queue.join()
+        self.lj.action_queue.exceptions = []
+
+    @skipIfNotMock
     def test_basic_flush(self):
         def mock_bulk_f(es, actions):
             self.assertEqual(es, self.elasticsearch)
@@ -199,33 +226,6 @@ class ActionsTestCase(LumberjackTestCase):
         my_handler.assertLoggedWithException(
             'lumberjack.actions', 'ERROR',
             'Error in flushing queue. Falling back to file.',
-            test_exception)
-
-    @skipIfNotMock
-    def test_general_error(self):
-        my_handler = TestHandler()
-        logging.getLogger('lumberjack.actions').addHandler(my_handler)
-
-        self.getLumberjackObject()
-
-        class TestException(Exception):
-            pass
-        test_exception = TestException()
-        def mock_bulk_f(es, actions):
-            raise test_exception
-        self.lj.action_queue.bulk = mock_bulk_f
-
-        self.lj.trigger_flush()
-        self.lj.action_queue.join(timeout=10)
-        self.assertFalse(self.lj.action_queue.is_alive())
-
-        self.assertEqual(type(self.lj.action_queue.last_exception),
-                         TestException)
-        self.lj.action_queue.last_exception = None
-
-        my_handler.assertLoggedWithException(
-            'lumberjack.actions', 'ERROR',
-            'Action queue thread terminated unexpectedly.',
             test_exception)
 
     def test_fallback_log_config(self):

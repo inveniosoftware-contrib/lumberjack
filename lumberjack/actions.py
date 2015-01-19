@@ -66,7 +66,7 @@ class ActionQueue(Thread):
         self.queue = []
         self.flush_event = Event()
         self.queue_lock = Lock()
-        self.last_exception = None
+        self.exceptions = []
         self.running = True
         self.logger = logging.getLogger(__name__)
 
@@ -74,6 +74,13 @@ class ActionQueue(Thread):
         # So we can monkey-patch these in testing
         self.bulk = bulk
         self.open_ = open
+
+    @property
+    def last_exception(self):
+        if len(self.exceptions) == 0:
+            return None
+        else:
+            return self.exceptions[-1]
 
     def _flush(self):
         """Perform all actions in the queue.
@@ -103,7 +110,6 @@ class ActionQueue(Thread):
         else:
             self.logger.debug('Flushed %d logs into Elasticsearch.',
                               len(queue))
-            self.flush_event.clear()
 
     def run(self):
         """The main method for the ActionQueue thread.
@@ -112,10 +118,17 @@ class ActionQueue(Thread):
 
         """
         caught_exception = False
-        while ((not caught_exception) and
-               (self.running or len(self.queue) > 0)):
+        while (self.running or len(self.queue) > 0):
             try:
                 self._flush()
+            except Exception as exc:
+                self.logger.error(
+                    'Unexpected exception in actions thread. ' +
+                    'Continuing anyway.',
+                    exc_info=True)
+                self.exceptions.append(exc)
+            finally:
+                self.flush_event.clear()
                 interval = self.config['interval']
                 triggered = self.flush_event.wait(interval)
                 if triggered:
@@ -123,14 +136,7 @@ class ActionQueue(Thread):
                 else:
                     self.logger.debug(
                         'Flushing after timeout of %.1fs.', interval)
-            except ElasticsearchException as exc:
-                traceback.print_exc(exc)
-            except Exception as exc:
-                self.logger.error(
-                    'Action queue thread terminated unexpectedly.',
-                    exc_info=True)
-                self.last_exception = exc
-                caught_exception = True
+
 
     # These two methods to be called externally, i.e. from the main thread.
     # TODO: Consider refactoring.
