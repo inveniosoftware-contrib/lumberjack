@@ -77,6 +77,7 @@ class ActionQueue(Thread):
 
     @property
     def last_exception(self):
+        """The last exception raised in the ActionQueue thread."""
         if len(self.exceptions) == 0:
             return None
         else:
@@ -136,7 +137,6 @@ class ActionQueue(Thread):
                 else:
                     self.logger.debug(
                         'Flushing after timeout of %.1fs.', interval)
-
 
     # These two methods to be called externally, i.e. from the main thread.
     # TODO: Consider refactoring.
