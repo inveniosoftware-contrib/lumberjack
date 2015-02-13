@@ -130,7 +130,14 @@ class ActionQueue(Thread):
             finally:
                 self._flush_event.clear()
                 interval = self.config['interval']
-                triggered = self._flush_event.wait(interval)
+                try:
+                    triggered = self._flush_event.wait(interval)
+                # Catch a weird bug in Python threading.  See tests.
+                except TypeError:
+                    self.logger.debug('Caught TypeError from Event.wait().  ' +
+                                      'This is expected only during ' +
+                                      'interpreter shutdown.', exc_info=True)
+                    return
                 if triggered:
                     self.logger.debug('Flushing on external trigger.')
                 else:

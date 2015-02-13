@@ -343,3 +343,32 @@ class ActionsTestCase(LumberjackTestCase):
         my_handler.assertLoggedWithException('lumberjack.actions', 'ERROR',
                                              'Error in fallback log. Lost ' +
                                              '1 logs.', my_ioerror)
+
+    def test_interpreter_shutdown_bug(self):
+        """Tests for a TypeError in threading
+
+        During interpreter shutdown, time.time is destroyed and becomes None,
+        raising a TypeError when Event.wait() is called.
+
+        <http://bugs.python.org/issue14623>
+
+        """
+        my_handler = TestHandler()
+        my_handler.setLevel(logging.DEBUG)
+        logging.getLogger('lumberjack.actions').setLevel(logging.DEBUG)
+        logging.getLogger('lumberjack.actions').addHandler(my_handler)
+
+        my_type_error = TypeError(
+            'Test error (\'NoneType\' object not callable)')
+        self.getLumberjackObject()
+
+        self.lj.action_queue._flush_event.wait = MagicMock(
+            side_effect=my_type_error)
+        self.lj.trigger_flush()
+        time.sleep(INTERVAL_JUMP_THREAD)
+
+        self.assertTrue(not self.lj.action_queue.is_alive())
+        my_handler.assertLoggedWithException(
+            'lumberjack.actions', 'DEBUG', 'Caught TypeError from ' +
+            'Event.wait().  This is expected only during interpreter ' +
+            'shutdown.', my_type_error)
