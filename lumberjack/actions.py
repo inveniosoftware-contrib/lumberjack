@@ -64,7 +64,7 @@ class ActionQueue(Thread):
         self.config = config
 
         self.queue = []
-        self.flush_event = Event()
+        self._flush_event = Event()
         self.queue_lock = Lock()
         self.exceptions = []
         self.running = True
@@ -72,8 +72,8 @@ class ActionQueue(Thread):
 
         self.daemon = True
         # So we can monkey-patch these in testing
-        self.bulk = bulk
-        self.open_ = open
+        self._bulk = bulk
+        self._open = open
 
     @property
     def last_exception(self):
@@ -95,12 +95,12 @@ class ActionQueue(Thread):
             self.queue = []
 
         try:
-            self.bulk(self.elasticsearch, queue)
+            self._bulk(self.elasticsearch, queue)
         except TransportError:
             self.logger.error('Error in flushing queue. Falling back to file.',
                               exc_info=True)
             try:
-                with self.open_(self.config['fallback_log_file'],
+                with self._open(self.config['fallback_log_file'],
                                 'a') as log_file:
                     json_lines = map(lambda doc: dumps(doc) + '\n', queue)
                     for line in json_lines:
@@ -118,7 +118,6 @@ class ActionQueue(Thread):
         Called by the ``start()`` method.  Not to be called directly.
 
         """
-        caught_exception = False
         while (self.running or len(self.queue) > 0):
             try:
                 self._flush()
@@ -129,9 +128,9 @@ class ActionQueue(Thread):
                     exc_info=True)
                 self.exceptions.append(exc)
             finally:
-                self.flush_event.clear()
+                self._flush_event.clear()
                 interval = self.config['interval']
-                triggered = self.flush_event.wait(interval)
+                triggered = self._flush_event.wait(interval)
                 if triggered:
                     self.logger.debug('Flushing on external trigger.')
                 else:
@@ -152,7 +151,7 @@ class ActionQueue(Thread):
 
         """
         self.logger.debug('Flush triggered; setting event object.')
-        self.flush_event.set()
+        self._flush_event.set()
 
     def queue_index(self, suffix, doc_type, body):
         """Queue a new document to be added to Elasticsearch.

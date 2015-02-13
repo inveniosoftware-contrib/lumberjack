@@ -74,10 +74,11 @@ class ActionsTestCase(LumberjackTestCase):
         self.assertIn(test_exception, self.lj.action_queue.exceptions)
         self.assertTrue(self.lj.action_queue.is_alive())
 
-        # Teardown
-        self.lj.action_queue.running = False
-        self.lj.action_queue.join()
-        self.lj.action_queue.exceptions = []
+        def this_cleanup():
+            self.lj.action_queue.running = False
+            self.lj.action_queue.join()
+            self.lj.action_queue.exceptions = []
+        self.addCleanup(this_cleanup)
 
     @skipIfNotMock
     def test_basic_flush(self):
@@ -93,7 +94,7 @@ class ActionsTestCase(LumberjackTestCase):
                              self.config['index_prefix'] + 'test')
             self.assertEqual(action['_source'], {'message': 'testD'})
 
-        self.lj.action_queue.bulk = mock_bulk_f
+        self.lj.action_queue._bulk = mock_bulk_f
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
                                          body={'message': 'testD'})
@@ -105,7 +106,7 @@ class ActionsTestCase(LumberjackTestCase):
         def mock_bulk_f(es, actions):
             actions_list.extend(actions)
 
-        self.lj.action_queue.bulk = mock_bulk_f
+        self.lj.action_queue._bulk = mock_bulk_f
         self.lj.trigger_flush()
         time.sleep(INTERVAL_SHORT)
 
@@ -125,7 +126,7 @@ class ActionsTestCase(LumberjackTestCase):
         def mock_bulk_f(es, actions):
             actions_list.extend(actions)
 
-        self.lj.action_queue.bulk = mock_bulk_f
+        self.lj.action_queue._bulk = mock_bulk_f
 
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
@@ -174,7 +175,7 @@ class ActionsTestCase(LumberjackTestCase):
         def mock_bulk_f(es, actions):
             actions_list.extend(actions)
 
-        self.lj.action_queue.bulk = mock_bulk_f
+        self.lj.action_queue._bulk = mock_bulk_f
 
         # Disable periodic flushing
         self.lj.action_queue.config['interval'] = None
@@ -213,7 +214,7 @@ class ActionsTestCase(LumberjackTestCase):
         test_exception = elasticsearch.TransportError(400, 'Test exception')
         def mock_bulk_f(es, actions):
             raise test_exception
-        self.lj.action_queue.bulk = mock_bulk_f
+        self.lj.action_queue._bulk = mock_bulk_f
 
         with self.lj.action_queue.queue_lock:
             self.lj.action_queue.queue.append(None)
@@ -244,7 +245,7 @@ class ActionsTestCase(LumberjackTestCase):
             args['filename'] = filename
             args['mode'] = mode
             yield file_
-        self.lj.action_queue.open_ = my_open
+        self.lj.action_queue._open = my_open
 
         completed_actions = []
         called = {'called': False}
@@ -254,7 +255,7 @@ class ActionsTestCase(LumberjackTestCase):
                 raise elasticsearch.TransportError(400, 'Test exception.')
             else:
                 completed_actions.extend(actions)
-        self.lj.action_queue.bulk = mock_bulk_f
+        self.lj.action_queue._bulk = mock_bulk_f
 
         doc = {'message': 'test'}
         while len(self.lj.action_queue.queue) <= MAX_QUEUE_LENGTH:
@@ -291,13 +292,13 @@ class ActionsTestCase(LumberjackTestCase):
             args['filename'] = filename
             args['mode'] = mode
             yield file_
-        self.lj.action_queue.open_ = my_open
+        self.lj.action_queue._open = my_open
 
         completed_actions = []
         def mock_bulk_f(es, actions):
             completed_actions.extend(actions)
             raise elasticsearch.TransportError(400, 'Test exception.')
-        self.lj.action_queue.bulk = mock_bulk_f
+        self.lj.action_queue._bulk = mock_bulk_f
 
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
@@ -327,11 +328,11 @@ class ActionsTestCase(LumberjackTestCase):
             yield BadFile()
 
         self.getLumberjackObject()
-        self.lj.action_queue.open_ = my_open
+        self.lj.action_queue._open = my_open
 
         def mock_bulk_f(es, actions):
             raise elasticsearch.TransportError(400, 'Test exception.')
-        self.lj.action_queue.bulk = mock_bulk_f
+        self.lj.action_queue._bulk = mock_bulk_f
 
         self.lj.action_queue.queue_index(suffix='test',
                                          doc_type=__name__,
