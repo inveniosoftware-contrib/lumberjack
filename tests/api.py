@@ -24,6 +24,10 @@ import lumberjack
 import elasticsearch
 
 class APITestCase(LumberjackTestCase):
+    def test_version_accessible(self):
+        from lumberjack import version
+        self.assertTrue(hasattr(version, '__version__'))
+
     def test_init_hosts(self):
         lj = lumberjack.Lumberjack(hosts=HOSTS,
                                    config=self.config)
