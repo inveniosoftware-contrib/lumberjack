@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of Lumberjack.
-# Copyright 2014 CERN.
+# Copyright 2015 CERN.
 #
 # Lumberjack is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Lesser General Public License as published by the Free
@@ -16,9 +16,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Lumberjack.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Helper postprocessors for plugging into Lumberjack."""
+
 from __future__ import absolute_import
 
-from .log import *
-from .schema import *
-from .actions import *
-from .postprocessors import *
+from .geoip import geoip
+
+__all__ = ('geoip')

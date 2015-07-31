@@ -71,7 +71,7 @@ entry actually appears in Elasticsearch.  By default this is every 30 seconds.
     usage
     configuration
     advanced_usage
+    postprocessors
     api
     backend
     developers
-

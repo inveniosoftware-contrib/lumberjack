@@ -23,6 +23,7 @@ import lumberjack
 from random import randint
 from elasticsearch import NotFoundError
 import time
+from mock import MagicMock
 
 HOSTS = [{'host': 'localhost', 'port': 9199}]
 INDEX_PREFIX = 'test-lumberjack-'
@@ -128,8 +129,6 @@ class TestHandler(logging.Handler):
                     repr(record.exc_info[1]) + ' != ' + repr(exception))
 
 def patchLumberjackObject(lj):
-    def noop(*args, **kwargs):
-        pass
-    lj.action_queue.bulk = noop
-    lj.elasticsearch.indices.put_mapping = noop
-    lj.elasticsearch.indices.put_template = noop
+    lj.action_queue._bulk = MagicMock()
+    lj.elasticsearch.indices.put_mapping = MagicMock()
+    lj.elasticsearch.indices.put_template = MagicMock()
