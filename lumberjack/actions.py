@@ -26,6 +26,7 @@ from threading import Thread, Event, Lock
 from json import dumps
 import traceback
 import logging
+from copy import deepcopy
 
 
 class ActionQueue(Thread):
@@ -83,6 +84,16 @@ class ActionQueue(Thread):
         else:
             return self.exceptions[-1]
 
+    def _run_postprocessors(self, queue_item):
+        action, postprocessors = queue_item
+        for postprocessor in postprocessors:
+            try:
+                action['_source'] = postprocessor(deepcopy(action['_source']))
+            except Exception:
+                self.logger.error('Postprocessor %s raised an exception.' %
+                                  repr(postprocessor), exc_info=True)
+        return action
+
     def _flush(self):
         """Perform all actions in the queue.
 
@@ -94,23 +105,25 @@ class ActionQueue(Thread):
             queue = list(self.queue)
             self.queue = []
 
+        actions = map(self._run_postprocessors, queue)
+
         try:
-            self._bulk(self.elasticsearch, queue)
+            self._bulk(self.elasticsearch, actions)
         except TransportError:
             self.logger.error('Error in flushing queue. Falling back to file.',
                               exc_info=True)
             try:
                 with self._open(self.config['fallback_log_file'],
                                 'a') as log_file:
-                    json_lines = map(lambda doc: dumps(doc) + '\n', queue)
+                    json_lines = map(lambda doc: dumps(doc) + '\n', actions)
                     for line in json_lines:
                         log_file.write(line)
             except IOError:
                 self.logger.error('Error in fallback log. Lost %d logs.',
-                                  len(queue), exc_info=True)
+                                  len(actions), exc_info=True)
         else:
             self.logger.debug('Flushed %d logs into Elasticsearch.',
-                              len(queue))
+                              len(actions))
 
     def run(self):
         """The main method for the ActionQueue thread.
@@ -160,7 +173,7 @@ class ActionQueue(Thread):
         self.logger.debug('Flush triggered; setting event object.')
         self._flush_event.set()
 
-    def queue_index(self, suffix, doc_type, body):
+    def queue_index(self, suffix, doc_type, body, postprocessors=None):
         """Queue a new document to be added to Elasticsearch.
 
         If the queue becomes longer than self.max_queue_length then a flush is
@@ -175,7 +188,12 @@ class ActionQueue(Thread):
 
         :param body: The actual document contents, as a dict.
 
+        :param postprocessors: Any post-processing functions to be run on the
+            document before indexing.
+
         """
+        postprocessors = postprocessors if postprocessors is not None else []
+
         action = {
             '_op_type': 'index',
             '_index': self.config['index_prefix'] + suffix,
@@ -184,7 +202,7 @@ class ActionQueue(Thread):
         }
 
         with self.queue_lock:
-            self.queue.append(action)
+            self.queue.append((action, postprocessors))
 
         self.logger.debug(
             'Put an action in the queue. qlen = %d, doc_type = %s',

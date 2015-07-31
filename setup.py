@@ -43,6 +43,8 @@ setup(
     platforms='any',
     install_requires=[
         'elasticsearch',
+        'python-geoip',
+        'python-geoip-geolite2',
     ],
     extras_require={
         "docs": "sphinx"

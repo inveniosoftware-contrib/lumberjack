@@ -92,5 +92,9 @@ class ElasticsearchHandler(logging.Handler):
         suffix = time.strftime(self.suffix_format, time.gmtime(record.created))
         (es_type, document) = self.format(record)
 
+        postprocessors = record.args['postprocessors'] \
+            if 'postprocessors' in record.args else None
+
         self.action_queue.queue_index(suffix=suffix, doc_type=es_type,
-                                      body=document)
+                                      body=document,
+                                      postprocessors=postprocessors)
